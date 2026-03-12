@@ -1,0 +1,2 @@
+baseline_k5_beam8: 02:08:26
+sttr_k5_tau2.0: 02:28:31

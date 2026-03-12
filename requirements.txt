@@ -1,0 +1,27 @@
+# Core
+# Install torch & torchaudio manually first from https://pytorch.org/get-started/locally/
+# e.g.: pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu124
+setuptools
+pyyaml>=6.0
+
+transformers
+sentencepiece
+sacrebleu
+
+# ASR
+openai-whisper
+librosa
+
+# Simultaneous translation evaluation
+simuleval
+
+# Metrics
+# Install separately: pip install unbabel-comet
+# (has strict pytorch version pins that can conflict)
+
+# Analysis & plotting
+pandas>=1.5
+matplotlib
+seaborn
+numpy
+scipy

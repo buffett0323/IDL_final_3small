@@ -1,0 +1,286 @@
+% ======================================================================
+% ABSTRACT
+% ======================================================================
+\begin{abstract}
+Streaming speech translation (SST) requires models to generate translations in real-time as audio arrives, creating a fundamental tension between translation quality and latency. Current simultaneous translation methods (e.g., wait-$k$ \citep{ma2019stacl} or fixed commit strategies) often suffer from ``early commitment'' errors---making a final translation decision before sufficient context is available---which cannot be easily corrected in a real-time streaming pipeline. We propose \textbf{Selective Test-Time Reasoning}, a method that triggers extra refinement steps only when the model identifies high uncertainty in its own predictions. Instead of always adding extra inference steps, we activate lightweight refinement only on difficult or ambiguous prefixes, thereby spending additional compute exclusively where it is needed. Our goal is to improve the quality--latency tradeoff by comparing multi-candidate selection, draft-then-refine, and uncertainty-triggered refinement against strong streaming baselines. We evaluate their impact on BLEU and latency-aware metrics (Average Lagging, LAAL) on standard benchmarks including MuST-C \citep{digangi2019mustc} and CoVoST2 \citep{wang2021covost2}.
+\end{abstract}
+
+% ======================================================================
+% 1. INTRODUCTION AND MOTIVATION
+% ======================================================================
+\section{Introduction and Motivation}
+
+Streaming translation is fundamentally different from offline translation. Unlike offline systems that process complete utterances before generating output, SST models must decide when to ``commit'' to an output word while possessing only partial input. The model only sees an incomplete source prefix, must decide when to emit target tokens, and cannot easily revise early commitment errors once they have been sent to the user.
+
+This setting leads to significant challenges in handling several categories of linguistic phenomena:
+
+\paragraph{Structural Ambiguity.} Subordinate clauses or long-distance reordering, where the end of the sentence dictates the correct translation of the beginning (e.g., verb-final languages like German or Japanese require waiting for the main verb before translating the clause).
+
+\paragraph{High-Stakes Content.} Errors in negation (e.g., translating ``not effective'' as ``effective''), numbers and units (e.g., ``3.5 million'' misrendered as ``35 million''), and named entities that fundamentally alter meaning and are often critical in real-world applications such as conference interpretation or diplomatic settings.
+
+Meanwhile, recent work in large language models (LLMs) demonstrates that additional test-time inference---including self-refinement \citep{madaan2023selfrefine}, multi-pass generation \citep{wang2023selfconsistency}, and chain-of-thought reasoning \citep{wei2022cot}---can significantly improve output quality. \citet{snell2024scaling} show that optimally scaling test-time compute can be more effective than scaling model parameters, and \citet{li2025tts_mt} provide the first systematic study of test-time scaling for machine translation, finding that domain-specific fine-tuning unlocks consistent gains.
+
+However, these ideas have mostly been studied in \textbf{offline text generation}, not under strict streaming latency constraints. Applying full test-time reasoning uniformly to every streaming prefix would introduce unacceptable latency. The key insight of this proposal is that \textbf{not all prefixes are equally difficult}: many can be translated confidently with minimal computation, while a select few---those exhibiting structural ambiguity, rare constructions, or high semantic uncertainty---benefit disproportionately from additional reasoning.
+
+\paragraph{Objectives.} Our objectives are:
+\begin{enumerate}[leftmargin=*, itemsep=2pt]
+    \item Investigate whether limited, selective test-time reasoning improves streaming translation quality without unacceptable latency penalties.
+    \item Analyze the quality--latency tradeoff when additional inference steps are introduced selectively based on model uncertainty.
+    \item Identify the failure categories (reordering, negation, numerals, named entities) where selective refinement is most beneficial.
+\end{enumerate}
+
+
+% ======================================================================
+% 2. RELATED WORK
+% ======================================================================
+\section{Related Work}
+
+Our work draws on three major research threads: simultaneous translation policies, multi-pass and deliberation-based decoding, and test-time compute scaling in LLMs.
+
+\subsection{Simultaneous Translation Policies}
+
+The wait-$k$ policy \citep{ma2019stacl} and prefix-to-prefix decoding framework form the standard baselines for simultaneous translation. The model reads $k$ source tokens before beginning to translate, then alternates between reading and writing. Earlier work by \citet{gu2017learning} proposed reinforcement learning-based adaptive READ/WRITE policies. Monotonic attention mechanisms \citep{raffel2017monotonic, arivazhagan2019milk, ma2020mma} provide an alternative by learning soft or hard monotonic alignments that implicitly control the read-write schedule.
+
+For end-to-end simultaneous speech translation specifically, \citet{ma2020simulst} adapted wait-$k$ and Monotonic Multihead Attention (MMA) to speech inputs via a pre-decision module, and introduced computation-aware latency metrics. More recently, large-scale systems such as SeamlessStreaming \citep{seamless2023} support many-to-many streaming translation across $\sim$100 languages using Efficient Monotonic Multihead Attention (EMMA), and LLM-based approaches such as EASiST \citep{fu2025easist} employ lightweight policy heads for dynamic read/write decisions.
+
+\subsection{Deliberation Networks and Multi-Pass Decoding}
+
+The deliberation network paradigm \citep{xia2017deliberation} introduced a two-decoder architecture where a first-pass decoder generates a draft and a second-pass decoder refines it using global context. In non-autoregressive translation, Mask-Predict \citep{ghazvininejad2019maskpredict} iteratively masks and regenerates the \emph{least-confident} tokens, providing a direct precedent for confidence-based selective refinement. The Levenshtein Transformer \citep{gu2019levenshtein} enables refinement through learned insertion and deletion operations. Speculative decoding \citep{leviathan2023speculative} introduces a draft-verify paradigm where a small model drafts tokens that are verified in parallel by a larger model, achieving 2--3$\times$ speedup with identical output distributions.
+
+For translation specifically, \citet{dou2024iterative} explore LLM-based iterative refinement where source-translation pairs are fed into an LLM for improvement across multiple rounds, finding that providing the source as an anchor prevents semantic drift. However, these methods are generally designed for \textbf{offline} settings and are too slow for streaming without modification.
+
+\subsection{Test-Time Compute Scaling in LLMs}
+
+\citet{snell2024scaling} analyze two mechanisms for scaling test-time compute: searching against process-based verifier reward models and iterative revision, proposing a compute-optimal strategy that adapts per-prompt based on difficulty. Self-consistency \citep{wang2023selfconsistency} samples diverse reasoning paths and selects the most consistent answer via majority voting, achieving large improvements on reasoning benchmarks. Self-Refine \citep{madaan2023selfrefine} enables LLMs to iteratively improve their own outputs through self-generated feedback without additional training.
+
+Crucially, \citet{li2025tts_mt} provide the first systematic study of test-time scaling specifically for machine translation, finding that (1)~general-purpose reasoning models see limited benefit for direct translation, (2)~domain-specific fine-tuning unlocks consistent gains, and (3)~forcing reasoning beyond the model's natural stopping point degrades quality. This motivates our approach of triggering reasoning \emph{selectively} rather than uniformly.
+
+\subsection{Adaptive Computation and Uncertainty Estimation}
+
+The Confident Adaptive Language Modeling (CALM) framework \citep{schuster2022calm} dynamically allocates compute per token via early exit decoding, achieving up to 3$\times$ speedup on translation while maintaining performance. This represents a closely related paradigm of confidence-triggered computation allocation, though applied to \emph{reducing} compute on easy tokens rather than \emph{adding} compute on hard ones.
+
+For uncertainty estimation in NMT, \citet{ott2018analyzing} provide a landmark analysis relating beam search degradation to inherent translation uncertainty. \citet{fomicheva2020unsupervised} propose glass-box quality estimation using internal model signals (token-level probabilities, Monte Carlo dropout). \citet{guerreiro2023hallucinations} show that sequence log-probability is the best preventive detector of NMT hallucinations, connecting uncertainty signals to detecting when refinement is needed. \citet{cheng2024entropy} advance uncertainty measurement with similarity-sensitive entropy that captures semantic rather than surface-form diversity.
+
+\subsection{Research Gap}
+
+While simultaneous speech translation, test-time reasoning, and uncertainty estimation have each been studied extensively, \textbf{no existing work combines selective test-time reasoning with streaming speech translation under latency constraints}. This proposal addresses that gap directly.
+
+
+% ======================================================================
+% 3. PROPOSED METHODOLOGY
+% ======================================================================
+\section{Proposed Methodology}
+
+We treat streaming translation as a \textbf{sequential decision process}. At each commit point, the model generates a draft translation based on the current audio prefix and must decide whether to commit immediately or invest additional computation in refinement. Figure~\ref{fig:pipeline} illustrates the overall pipeline.
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[
+    node distance=1.2cm and 1.8cm,
+    box/.style={rectangle, draw, rounded corners, minimum width=2.6cm, minimum height=0.8cm, align=center, font=\small},
+    decision/.style={diamond, draw, aspect=2, minimum width=1.8cm, inner sep=1pt, align=center, font=\small},
+    arrow/.style={-{Stealth[length=2.5mm]}, thick},
+]
+    \node[box] (input) {Audio Prefix\\$\mathbf{x}_{1:t}$};
+    \node[box, right=of input] (draft) {Draft\\Translation};
+    \node[decision, right=of draft] (unc) {Uncertainty\\$> \tau$?};
+    \node[box, above right=0.6cm and 1.5cm of unc] (refine) {Refine\\(Method B)};
+    \node[box, below right=0.6cm and 1.5cm of unc] (commit_low) {Commit\\(Low Latency)};
+    \node[box, right=3.5cm of unc] (commit_high) {Commit\\(High Quality)};
+
+    \draw[arrow] (input) -- (draft);
+    \draw[arrow] (draft) -- (unc);
+    \draw[arrow] (unc) -- node[above left, font=\scriptsize] {Yes} (refine);
+    \draw[arrow] (unc) -- node[below left, font=\scriptsize] {No} (commit_low);
+    \draw[arrow] (refine) -- (commit_high);
+\end{tikzpicture}
+\caption{Pipeline for Uncertainty-Triggered Selective Refinement (Method~C). At each commit point, the model estimates uncertainty over its draft translation. If uncertainty exceeds threshold $\tau$, refinement is triggered before committing.}
+\label{fig:pipeline}
+\end{figure}
+
+\subsection{Baseline}
+
+Our baseline system uses standard streaming translation with a wait-$k$ or prefix-to-prefix strategy \citep{ma2019stacl} with standard beam search decoding. This represents the current standard approach in simultaneous translation, providing a strong reference point for measuring the marginal benefit of additional test-time computation.
+
+\subsection{Method A: Multi-Candidate Selection}
+
+At each commit point, the model generates $K$ candidate translations for the current prefix. A scoring function---either the model's own log-probability or an external quality estimation scorer \citep{fomicheva2020unsupervised}---selects the best candidate. To ensure a fair comparison, we control for the additional compute by comparing against simple larger-beam decoding (beam size $= K$), isolating the effect of the selection mechanism from the effect of exploring more hypotheses.
+
+\subsection{Method B: Draft-Then-Refine}
+
+A draft translation is generated using standard decoding, then immediately passed through a \textbf{second inference step} for correction before being committed to the user. This follows the deliberation network paradigm \citep{xia2017deliberation} adapted for the streaming setting. The second pass has access to both the draft and the original audio prefix, enabling it to catch and correct errors that arise from partial context. This method is always applied (i.e., every prefix is refined), establishing the upper bound on quality improvement but also the maximum latency overhead.
+
+\subsection{Method C: Uncertainty-Triggered Refinement (Primary Contribution)}
+
+The core innovation of this proposal is to apply refinement \textbf{selectively} based on model uncertainty, combining the quality benefits of Method~B with the low latency of direct commitment:
+
+\begin{enumerate}[leftmargin=*, itemsep=4pt]
+    \item \textbf{Uncertainty Estimation.} At each commit point, the model estimates uncertainty over its draft translation using one or more of the following signals:
+    \begin{itemize}[itemsep=2pt]
+        \item \textit{Token-level entropy:} $H = -\sum_{v} p(v \mid \mathbf{x}_{1:t}) \log p(v \mid \mathbf{x}_{1:t})$
+        \item \textit{Sequence-level confidence:} normalized log-probability of the draft
+        \item \textit{Predictive variance:} disagreement among multiple forward passes (e.g., MC dropout \citep{fomicheva2020unsupervised})
+    \end{itemize}
+
+    \item \textbf{Thresholded Decision.} If the estimated uncertainty is \textbf{below} a calibrated threshold $\tau$, the model commits the draft immediately (\textbf{low latency}). If uncertainty \textbf{exceeds} $\tau$, the model triggers Method~B to refine the output before committing (\textbf{high quality}).
+
+    \item \textbf{Threshold Calibration.} The threshold $\tau$ is tuned on a held-out development set to optimize the quality--latency tradeoff, drawing on calibration techniques from CALM \citep{schuster2022calm} and distribution-free risk control.
+\end{enumerate}
+
+This approach reduces unnecessary latency increases by only spending extra compute on the subset of prefixes where it is most likely to improve translation quality, analogous to how the CALM framework \citep{schuster2022calm} allocates \emph{less} compute to easy tokens---but applied in the reverse direction.
+
+\begin{algorithm}[ht]
+\caption{Uncertainty-Triggered Selective Refinement}
+\label{alg:selective}
+\begin{algorithmic}[1]
+\Require Audio stream $\mathbf{x}$, uncertainty threshold $\tau$, wait parameter $k$
+\State Initialize commit buffer $\mathcal{B} \gets \emptyset$
+\For{each commit point $t$ (per wait-$k$ schedule)}
+    \State $\hat{y}_t \gets \textsc{DraftTranslate}(\mathbf{x}_{1:t})$
+    \State $u_t \gets \textsc{EstimateUncertainty}(\hat{y}_t, \mathbf{x}_{1:t})$
+    \If{$u_t > \tau$} \Comment{High uncertainty: refine}
+        \State $\hat{y}_t \gets \textsc{Refine}(\hat{y}_t, \mathbf{x}_{1:t})$
+    \EndIf
+    \State $\mathcal{B} \gets \mathcal{B} \cup \{\hat{y}_t\}$ \Comment{Commit to output}
+\EndFor
+\State \Return $\mathcal{B}$
+\end{algorithmic}
+\end{algorithm}
+
+
+% ======================================================================
+% 4. EXPERIMENTAL SETUP
+% ======================================================================
+\section{Experimental Setup}
+
+\subsection{Datasets}
+
+We will use standard speech translation benchmarks:
+
+\begin{itemize}[leftmargin=*, itemsep=4pt]
+    \item \textbf{MuST-C} \citep{digangi2019mustc, cattoni2021mustc}: The most widely used speech translation benchmark, built from English TED Talks covering up to 14 language directions with at least 237 hours per direction. We focus on En$\rightarrow$De as the primary evaluation pair due to its significant word-order divergence, with En$\rightarrow$Es as a secondary pair.
+
+    \item \textbf{CoVoST2} \citep{wang2021covost2}: A massively multilingual speech-to-text translation corpus covering 21 languages into English and English into 15 languages, totaling 2,880 hours from 78K speakers. Provides broader language coverage for generalization analysis.
+\end{itemize}
+
+We will use the standard train/dev/test splits and the \texttt{tst-COMMON} evaluation set for MuST-C, consistent with IWSLT shared task conventions \citep{ahmad2024iwslt}.
+
+\subsection{Metrics}
+
+\paragraph{Quality.}
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+    \item \textbf{BLEU} score \citep{papineni2002bleu} as the primary translation quality metric.
+    \item \textbf{COMET} \citep{rei2020comet} as a secondary neural-based quality metric for more nuanced evaluation.
+\end{itemize}
+
+\paragraph{Latency.}
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+    \item \textbf{Average Lagging (AL)} \citep{ma2019stacl}: Measures the average number of source tokens the system lags behind an ideal simultaneous translator.
+    \item \textbf{Length-Adaptive Average Lagging (LAAL)} \citep{papi2022laal}: Corrects AL's bias for systems that over-generate, adopted as the standard metric in IWSLT shared tasks from 2022 onward.
+    \item \textbf{Computation-Aware Latency}: Following \citet{ma2020simulst}, we also report wall-clock computation-aware latency to account for the real cost of additional inference steps.
+\end{itemize}
+
+\paragraph{Tradeoff Analysis.}
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+    \item \textbf{Quality--Latency curves}: We plot BLEU vs.\ AL/LAAL across different configurations to identify the Pareto frontier---the set of points achieving the best possible quality for any given latency budget.
+    \item \textbf{Refinement trigger rate}: The fraction of commit points where Method~C triggers refinement, as a function of the threshold $\tau$.
+\end{itemize}
+
+All evaluation will be conducted using the SimulEval toolkit \citep{ma2020simuleval}, the de facto standard for simultaneous translation evaluation.
+
+
+% ======================================================================
+% 5. EXPERIMENTAL PLAN AND ABLATIONS
+% ======================================================================
+\section{Experimental Plan and Ablations}
+
+We plan the following systematic experiments:
+
+\subsection{Main Comparisons}
+
+\begin{enumerate}[leftmargin=*, itemsep=4pt]
+    \item \textbf{Baseline} (wait-$k$ / prefix-to-prefix with beam search) vs.\ \textbf{Multi-Candidate Selection} (Method~A) vs.\ \textbf{Always-Refine} (Method~B applied uniformly) vs.\ \textbf{Selective-Refine} (Method~C).
+    \item Comparison against larger-beam decoding at equivalent compute budgets to isolate the benefit of the selection/refinement mechanism from simply exploring more hypotheses.
+\end{enumerate}
+
+\subsection{Ablation Studies}
+
+\begin{enumerate}[leftmargin=*, itemsep=4pt]
+    \item \textbf{Uncertainty thresholds.} Sweep over threshold values $\tau$ to trace out the quality--latency Pareto frontier for Method~C. Analyze the sensitivity of the tradeoff to threshold choice.
+
+    \item \textbf{Number of candidates ($K$).} For Method~A, vary $K \in \{2, 4, 8, 16\}$ to determine the point of diminishing returns.
+
+    \item \textbf{Uncertainty signals.} Compare different uncertainty estimators: token-level entropy, sequence-level log-probability, MC dropout variance, and combinations thereof.
+
+    \item \textbf{Wait-$k$ values.} Test across $k \in \{3, 5, 7, 9\}$ to understand how the benefit of selective refinement interacts with the baseline latency regime.
+\end{enumerate}
+
+\subsection{Error Analysis by Category}
+
+We will conduct a fine-grained error analysis, categorizing improvements (and failures) of selective refinement across linguistically motivated categories:
+
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+    \item \textbf{Reordering errors}: Cases requiring long-distance word-order changes (especially En$\rightarrow$De verb placement).
+    \item \textbf{Negation errors}: Dropped or flipped negation markers.
+    \item \textbf{Numeral errors}: Mistranslation of numbers, quantities, and units.
+    \item \textbf{Named entity errors}: Corruption or hallucination of proper nouns.
+    \item \textbf{Subordinate clause errors}: Premature commitment before clause boundaries are resolved.
+\end{itemize}
+
+We hypothesize that selective refinement will disproportionately reduce errors in the first and last categories, where partial context is most ambiguous.
+
+
+% ======================================================================
+% 6. EXPECTED RESULTS
+% ======================================================================
+\section{Expected Results}
+
+We expect the following outcomes:
+
+\begin{enumerate}[leftmargin=*, itemsep=4pt]
+    \item \textbf{Selective refinement improves the Pareto frontier.} Method~C should achieve higher BLEU at comparable latency (or comparable BLEU at lower latency) relative to both the baseline and uniform refinement (Method~B), by concentrating compute where it has the greatest marginal benefit.
+
+    \item \textbf{Reduction in catastrophic early commitment errors.} We expect the most dramatic improvements on prefixes involving structural ambiguity and long-distance reordering, where the baseline is most likely to commit to an incorrect translation.
+
+    \item \textbf{Uncertainty signals correlate with translation difficulty.} High-entropy commit points should align with linguistically challenging phenomena (reordering, negation), validating the use of uncertainty as a proxy for translation difficulty.
+
+    \item \textbf{Diminishing returns for uniform refinement.} Always-Refine (Method~B) should show quality gains but with disproportionate latency cost, confirming that selective application is more compute-efficient.
+\end{enumerate}
+
+
+% ======================================================================
+% 7. RISKS AND CHALLENGES
+% ======================================================================
+\section{Risks and Challenges}
+
+\paragraph{Uncertainty--Error Mismatch.} Model uncertainty signals (entropy, log-probability) may not correlate well with actual translation errors. Prior work has shown that NMT models can be severely miscalibrated at inference time \citep{wang2020calibration}, and high entropy may reflect legitimate ambiguity (multiple valid translations) rather than translation difficulty. We mitigate this by comparing multiple uncertainty estimators and by analyzing the correlation between uncertainty and downstream error types.
+
+\paragraph{Latency Overhead.} Even selective refinement introduces non-trivial latency. If the uncertainty threshold is poorly calibrated, the system may trigger refinement too frequently, negating the latency benefits. We mitigate this with strict latency budgets and by reporting computation-aware latency metrics alongside AL/LAAL.
+
+\paragraph{Marginal Gains on Strong Baselines.} If the baseline system (e.g., a well-tuned wait-$k$ model with large beam) is already strong, the gains from refinement may be small. Recent findings by \citet{li2025tts_mt} suggest that general-purpose reasoning provides limited benefit for direct translation. We mitigate this by focusing on known failure modes (reordering, negation) where baseline performance is weakest, and by conducting clear ablation studies to isolate the source of any improvements.
+
+\paragraph{Mitigation Strategy.} Across all risks, we employ:
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+    \item Strict latency budgets enforced during evaluation.
+    \item Comprehensive ablation studies isolating each variable.
+    \item Careful threshold tuning on held-out development data.
+    \item Linguistically motivated error analysis to identify \emph{where} selective refinement helps, even if aggregate metrics show modest gains.
+\end{itemize}
+
+
+% ======================================================================
+% 8. TIMELINE
+% ======================================================================
+\section{Timeline: Planned Work Before Midterm}
+
+\begin{enumerate}[leftmargin=*, itemsep=4pt]
+    \item \textbf{Weeks 1--2:} Implement the streaming baseline (wait-$k$ with beam search) and set up the evaluation pipeline using SimulEval \citep{ma2020simuleval}. Verify reproduction of baseline BLEU and AL numbers on MuST-C tst-COMMON.
+
+    \item \textbf{Weeks 3--4:} Implement Multi-Candidate Selection (Method~A) with varying $K$. Compare against equivalent-compute larger-beam baselines.
+
+    \item \textbf{Weeks 5--6:} Add uncertainty estimation module (token entropy, sequence log-probability). Analyze the distribution of uncertainty scores across commit points and their correlation with error types.
+
+    \item \textbf{Weeks 7--8:} Implement Draft-Then-Refine (Method~B) and Uncertainty-Triggered Refinement (Method~C). Run initial quality--latency tradeoff experiments. Prepare midterm report with preliminary results.
+\end{enumerate}
+
+Post-midterm work will focus on comprehensive ablations, error analysis by category, threshold optimization, and exploration of additional uncertainty signals (MC dropout, learned confidence).
