@@ -1,0 +1,238 @@
+% ======================================================================
+% MIDTERM REPORT
+% ======================================================================
+
+\section{Abstract}
+
+Streaming Speech Translation (SST) requires balancing real-time responsiveness with translation accuracy. Current simultaneous translation methods suffer from ``early commitment'' errors, where a model generates a final translation before sufficient context is available. We propose \textbf{Selective Test-Time Reasoning (STTR)}, a framework that dynamically allocates additional inference compute only when the model identifies high uncertainty in its own predictions. Our approach uses token-level entropy as an uncertainty signal to selectively trigger multi-candidate refinement at commit points where the model is least confident. We evaluate on WMT14 English-German using the SimulEval toolkit, measuring BLEU for translation quality and Average Lagging (AL) for latency. Preliminary results with the Helsinki-NLP/opus-mt-en-de model ($\sim$300M parameters) show that while the uncertainty gating mechanism functions correctly, the refinement step (beam search re-ranking) provides minimal improvement over greedy decoding for this particular model, motivating exploration of larger models where beam search has greater impact.
+
+\section{Introduction and motivation}
+
+Streaming translation is fundamentally constrained by the sequential arrival of input. Unlike offline systems that process complete utterances, SST models must decide when to commit to an output word while possessing only partial information \citep{ma2019stacl}. This leads to the ``early commitment'' problem, resulting in critical failures when handling structural ambiguities, such as verb-final constructions in German \citep{gu2017learning}. Errors in high-stakes content like negation markers, numerical units, and named entities are difficult to correct once emitted \citep{papi2025real}.
+
+Recent work on test-time compute scaling \citep{snell2024scaling} shows that allocating additional inference compute can sometimes be more effective than increasing model parameters. However, applying extra computation uniformly in a streaming context would lead to unacceptable latency spikes. Our key insight is that \textbf{not all segments are equally difficult}. By implementing a selective gating mechanism inspired by CALM \citep{schuster2022calm}, we maintain low latency for confident predictions while utilizing deeper reasoning only for uncertain inputs.
+
+Our objectives are: (1) implement a wait-$k$ simultaneous translation baseline with the SimulEval framework, (2) develop an uncertainty-gated refinement mechanism using token-level entropy, and (3) demonstrate that selective refinement can improve the quality-latency Pareto frontier compared to uniform compute allocation.
+
+\section{Related work and background}
+
+\subsection{Literature review}
+
+\textbf{Simultaneous translation policies.} The wait-$k$ policy \citep{ma2019stacl} reads $k$ source words before beginning translation, then alternates reading one source word and writing one target word. Monotonic attention \citep{ma2020mma} provides a learnable alternative but lacks adaptability to varying input difficulty.
+
+\textbf{Refinement techniques.} Deliberation networks \citep{xia2017deliberation} and mask-predict \citep{ghazvininejad2019maskpredict} improve quality through multi-pass decoding, but their computational cost has limited real-time adoption \citep{dou2024iterative}. Test-time compute scaling \citep{snell2024scaling, wang2023selfconsistency} provides a framework for adaptive compute allocation without retraining.
+
+\textbf{Uncertainty estimation in MT.} \citet{fomicheva2020unsupervised} demonstrated unsupervised quality estimation using model uncertainty signals. \citet{cheng2024entropy} proposed similarity-sensitive entropy for measuring translation uncertainty. Our work integrates these ideas into a streaming simultaneous translation framework.
+
+\subsection{Background}
+
+We use two primary evaluation metrics. \textbf{BLEU} \citep{rei2020comet} measures $n$-gram overlap between predicted and reference translations, computed at corpus level using sacreBLEU. \textbf{Average Lagging (AL)} \citep{ma2019stacl} quantifies the delay between reading source words and writing target words:
+\begin{equation}
+\text{AL} = \frac{1}{\tau} \sum_{t=1}^{\tau} \left( d(t) - \frac{t-1}{\gamma} \right)
+\end{equation}
+where $d(t)$ is the number of source words read before emitting target word $t$, $\gamma = |y|/|x|$ is the target-to-source length ratio, and $\tau$ is the index where the decoder first reaches the end of the source. Lower AL indicates lower latency.
+
+The SimulEval toolkit \citep{ma2020simuleval} provides the evaluation framework, feeding source words one at a time and recording delays for latency computation.
+
+\section{Methodology}
+
+\subsection{Model description}
+
+Our system consists of three components operating in a pipeline:
+
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Wait-$k$ policy:} Controls the read/write schedule. The agent reads $k$ source words before starting translation, then alternates between reading and writing.
+    \item \textbf{Uncertainty estimator:} Computes token-level entropy from the model's output distribution at each decoding step.
+    \item \textbf{Selective refinement gate:} Compares mean entropy against threshold $\tau$ to decide whether to trigger multi-candidate re-ranking.
+\end{enumerate}
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[
+    node distance=1.2cm and 1.5cm,
+    box/.style={rectangle, draw, rounded corners, minimum width=2.2cm, minimum height=0.8cm, align=center, font=\small},
+    decision/.style={diamond, draw, aspect=2, minimum width=1.8cm, align=center, font=\small},
+    arrow/.style={-{Stealth[length=2mm]}, thick}
+]
+    \node[box] (source) {Source\\prefix};
+    \node[box, right=of source] (draft) {Draft decode\\(beam=1)};
+    \node[box, below=0.8cm of draft] (entropy) {Compute\\entropy $H$};
+    \node[decision, right=of entropy] (gate) {$H > \tau$?};
+    \node[box, above=0.8cm of gate] (refine) {Refine\\(beam=$2K$)};
+    \node[box, right=of gate] (output) {Emit\\word};
+
+    \draw[arrow] (source) -- (draft);
+    \draw[arrow] (draft) -- (entropy);
+    \draw[arrow] (entropy) -- (gate);
+    \draw[arrow] (gate) -- node[right, font=\small] {yes} (refine);
+    \draw[arrow] (gate) -- node[above, font=\small] {no} (output);
+    \draw[arrow] (refine) -| (output);
+\end{tikzpicture}
+\caption{STTR pipeline. At each commit point, the model generates a draft translation (greedy), computes token-level entropy, and selectively triggers multi-candidate refinement only when uncertainty exceeds threshold $\tau$.}
+\label{fig:pipeline}
+\end{figure}
+
+The uncertainty signal is computed as mean token entropy over all decoding steps:
+\begin{equation}
+H = \frac{1}{T} \sum_{t=1}^{T} \left( -\sum_{v \in \mathcal{V}} p(v \mid x, y_{<t}) \log p(v \mid x, y_{<t}) \right)
+\end{equation}
+where $T$ is the number of generated tokens, $\mathcal{V}$ is the vocabulary ($|\mathcal{V}| \approx 58$k for MarianMT), and $p(v \mid x, y_{<t})$ is the model's predicted probability for token $v$ given source $x$ and previously generated tokens $y_{<t}$.
+
+When refinement is triggered, we generate $K$ candidate translations using beam search with $2K$ beams and $K$ return sequences, selecting the candidate with the highest sequence-level log-probability score.
+
+\paragraph{Model architecture.} We use Helsinki-NLP/opus-mt-en-de, a MarianMT model with $\sim$300M parameters pretrained on the OPUS parallel corpus. No fine-tuning is performed; all experiments are inference-only.
+
+\begin{table}[h]
+\caption{System configuration}
+\label{tab:config}
+\centering
+\begin{tabular}{ll}
+    \toprule
+    Component & Configuration \\
+    \midrule
+    NMT model & Helsinki-NLP/opus-mt-en-de ($\sim$300M params) \\
+    Draft decoding & Greedy (beam = 1) \\
+    Refinement decoding & Beam search (beams = $2K$, return $K$ sequences) \\
+    Default $K$ (candidates) & 4 \\
+    Uncertainty signal & Mean token entropy \\
+    Threshold $\tau$ & Swept over $\{1.0, 1.5, 2.0, 2.5, 3.0\}$ \\
+    Wait-$k$ values & $k \in \{3, 5, 7, 9\}$ \\
+    \bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Dataset}
+
+We evaluate on \textbf{WMT14 newstest} English$\to$German (2,737 sentence pairs), downloaded via sacreBLEU. This is the most widely cited En-De MT benchmark, making our results directly comparable to published work. The dataset is used for evaluation only --- no training is performed.
+
+Input format follows SimulEval conventions: one source sentence per line (English) and one reference translation per line (German). Source words are fed to the agent one at a time to simulate streaming input.
+
+Note: Our proposal originally specified MuST-C and CoVoST2 (speech datasets). We simplified to text-to-text evaluation on WMT14 to isolate the MT-level uncertainty gating mechanism from ASR-related confounds. Speech-to-text evaluation remains a planned extension.
+
+\subsection{Evaluation metrics}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{BLEU:} Corpus-level BLEU computed via sacreBLEU, measuring $n$-gram precision ($n=1\ldots4$) with a brevity penalty. Higher is better.
+    \item \textbf{Average Lagging (AL):} Measures the average number of source words the model reads ahead of a perfectly synchronized policy. Lower is better; for wait-$k$, AL $\approx k$.
+    \item \textbf{Wall-clock time:} Total inference time on GPU, measuring the computational cost of each method.
+\end{itemize}
+
+\subsection{Loss function}
+
+This project does not involve model training. All experiments use pretrained models at inference time. The refinement step selects candidates by maximizing sequence-level log-probability:
+\begin{equation}
+y^* = \arg\max_{y \in \mathcal{C}} \log P(y \mid x)
+\end{equation}
+where $\mathcal{C}$ is the set of $K$ candidate translations generated by beam search.
+
+\section{Baseline and extensions}
+
+\subsection{Baseline: wait-$k$ with greedy decoding}
+
+Our baseline implements the wait-$k$ policy \citep{ma2019stacl} with greedy decoding (beam size = 1). The agent is implemented as a SimulEval \texttt{TextToTextAgent} that:
+\begin{enumerate}[leftmargin=*]
+    \item Reads $k$ source words before producing any output.
+    \item At each subsequent step, translates the current source prefix and emits the next target word.
+    \item Caches translations to avoid redundant inference when the source prefix has not changed.
+\end{enumerate}
+
+We evaluate four wait-$k$ configurations ($k \in \{3, 5, 7, 9\}$) to establish the quality-latency tradeoff curve.
+
+\subsection{Implemented extensions}
+
+We have implemented and evaluated three extensions beyond the baseline:
+
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Compute-matched baseline (beam = 8):} Wait-$k$ with beam size 8, matching the maximum compute budget of the STTR refinement step. This isolates the effect of selective refinement from simply using more beams.
+    \item \textbf{Method B --- Always-refine (planned):} Refinement at every commit point regardless of uncertainty, serving as a quality upper bound for STTR.
+    \item \textbf{Method C --- STTR:} Our primary contribution. Draft with greedy decoding, compute entropy, refine only when $H > \tau$. Currently evaluated with $\tau = 2.0$ and $K = 4$.
+\end{enumerate}
+
+\subsection{Baseline reproduction evidence}
+
+All experiments were run on a single NVIDIA GPU using our own implementations. Results are generated from scratch using SimulEval with the pretrained opus-mt-en-de model. Table~\ref{tab:baseline} shows our baseline results, and Table~\ref{tab:comparison} shows the STTR comparison.
+
+\section{Preliminary results}
+
+\begin{table}[h]
+\caption{Wait-$k$ baseline results (greedy decoding, beam = 1) on WMT14 En-De (2,737 sentences)}
+\label{tab:baseline}
+\centering
+\begin{tabular}{ccc}
+    \toprule
+    Wait-$k$ & BLEU ($\uparrow$) & AL ($\downarrow$) \\
+    \midrule
+    $k=3$ & 14.17 & 2.50 \\
+    $k=5$ & 16.72 & 4.14 \\
+    $k=7$ & 18.43 & 6.08 \\
+    $k=9$ & 19.63 & 8.03 \\
+    \bottomrule
+\end{tabular}
+\end{table}
+
+The baseline results confirm the expected quality-latency tradeoff: higher $k$ yields better BLEU at the cost of increased latency (AL). BLEU increases monotonically from 14.17 ($k=3$) to 19.63 ($k=9$), while AL tracks the wait-$k$ parameter as expected.
+
+\begin{table}[h]
+\caption{STTR vs.\ compute-matched baseline at $k=5$}
+\label{tab:comparison}
+\centering
+\begin{tabular}{lccc}
+    \toprule
+    Method & BLEU ($\uparrow$) & AL ($\downarrow$) & Wall Time \\
+    \midrule
+    Baseline ($k=5$, beam=1) & 16.72 & 4.14 & $\sim$30 min \\
+    Baseline ($k=5$, beam=8) & 16.92 & 4.16 & 2h 08m \\
+    STTR ($k=5$, $\tau=2.0$) & 16.81 & 4.15 & 2h 28m \\
+    \bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Key finding.} Beam search with 8 beams provides only +0.20 BLEU over greedy decoding (16.92 vs.\ 16.72), indicating that the opus-mt-en-de model is well-calibrated for greedy decoding on partial source prefixes. Consequently, STTR's selective refinement (16.81 BLEU) falls between the two baselines but takes longer due to the overhead of computing entropy on the draft pass before triggering refinement.
+
+This result suggests that the bottleneck is not the refinement strategy but rather the \textbf{model's limited capacity to benefit from beam search}. A larger model where beam search provides a more substantial quality improvement would be better suited to demonstrate the value of selective refinement.
+
+\section{Discussion}
+
+\subsection{Challenges encountered}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{SimulEval compatibility:} SimulEval 1.1.0 contains several bugs in its latency scorers (division by zero on empty translations) and instance logging. We implemented three monkey-patches to work around these issues.
+    \item \textbf{FP16 instability:} Half-precision inference caused empty translations on short source prefixes. We reverted to FP32 and used greedy decoding (beam=1) for speed instead.
+    \item \textbf{Beam search marginal returns:} The primary challenge is that beam=8 barely improves over beam=1 for this model, limiting the potential upside of any refinement-based approach.
+\end{itemize}
+
+\subsection{Risks}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Model--uncertainty mismatch:} The model may be ``confidently wrong'' \citep{wang2020calibration}, where low entropy does not correlate with high quality. Calibration on a held-out set is needed.
+    \item \textbf{Generalization to speech:} Our text-to-text evaluation does not capture ASR error propagation, which may affect uncertainty patterns differently.
+\end{itemize}
+
+\section{Future directions}
+
+Based on our preliminary findings, we plan the following next steps:
+
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Larger NMT model:} Switch to NLLB-200-distilled-600M or mBART-large, where beam search is known to provide more substantial improvements over greedy decoding, giving STTR more room to demonstrate selective refinement benefits.
+    \item \textbf{Threshold sweep:} Run the full $\tau$ sweep ($\{1.0, 1.5, 2.0, 2.5, 3.0\}$) to map the trigger rate vs.\ BLEU tradeoff and identify the optimal operating point.
+    \item \textbf{Always-refine upper bound:} Run Method~B to quantify the maximum possible BLEU gain from refinement and determine what fraction STTR can recover.
+    \item \textbf{Alternative uncertainty signals:} Compare token-level entropy with predictive variance (MC Dropout) and sequence-level log-probability, as proposed in our project plan.
+    \item \textbf{Linguistic error analysis:} Examine whether high-entropy commit points correlate with specific error types (negation, numerals, word reordering).
+\end{enumerate}
+
+\section{Team contributions}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{ll}
+    \toprule
+    Member & Contributions \\
+    \midrule
+    Jeng-Yue Liu & Data pipeline, WMT download, metric verification \\
+    Wilson Zheng & SimulEval agents (wait-$k$ + STTR), experiment scripts \\
+    Haoling Pu & Literature review, analysis scripts, project management \\
+    \bottomrule
+\end{tabular}
+\end{table}
+
+\noindent\textbf{GitHub:} \url{https://github.com/[your-repo-link]}
