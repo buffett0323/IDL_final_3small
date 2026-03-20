@@ -14,11 +14,25 @@ Usage:
 """
 
 import torch
-from simuleval import entrypoint
+from pathlib import Path
+import sys
+try:
+    from simuleval import entrypoint
+except ImportError:
+    from simuleval.utils import entrypoint
 from simuleval.agents.agent import TextToTextAgent
 from simuleval.agents.actions import ReadAction, WriteAction
 from simuleval.evaluator.instance import Instance
-from transformers import MarianMTModel, MarianTokenizer
+
+AGENT_DIR = Path(__file__).resolve().parent
+if str(AGENT_DIR) not in sys.path:
+    sys.path.insert(0, str(AGENT_DIR))
+
+from model_utils import (
+    add_language_args,
+    build_generate_kwargs,
+    load_translation_model,
+)
 
 # Monkey-patch: SimulEval 1.1.0 has a bug where summarize() calls
 # get_source_audio_path even for text-to-text agents.
@@ -26,18 +40,8 @@ _original_summarize = Instance.summarize
 
 
 def _patched_summarize(self):
-    result = {
-        "index": self.index,
-        "prediction": self.prediction,
-        "delays": self.delays,
-        "elapsed": self.elapsed,
-        "prediction_length": self.prediction_length,
-        "reference": self.reference,
-        "source": getattr(self.dataloader, "get_source_audio_path", lambda i: "")(
-            self.index
-        ),
-        "metric": self.metrics,
-    }
+    result = _original_summarize(self)
+    result["metric"] = self.metrics
     return result
 
 
@@ -49,46 +53,64 @@ from statistics import mean
 
 def _patched_scorer_call(self, instances):
     scores = []
-    for ins in instances.values():
+    for index, ins in instances.items():
         delays = getattr(ins, self.timestamp_type)
         if not delays or ins.prediction_length == 0:
             continue
-        if self.use_ref_len or ins.reference is None:
-            tgt_len = ins.prediction_length
-        else:
-            tgt_len = len(ins.reference.split())
         src_len = ins.source_length
-        if tgt_len == 0 or src_len == 0:
+        if src_len == 0:
             continue
-        scores.append(self.compute(delays, src_len, tgt_len))
+        try:
+            score = self.compute(ins)
+        except ZeroDivisionError:
+            continue
+        ins.metrics[self.metric_name] = score
+        scores.append(score)
     return mean(scores) if scores else 0.0
 
 LatencyScorer.__call__ = _patched_scorer_call
 
 # Monkey-patch: SimulEval 1.1.0 writes DataFrame to file without .to_string()
 from simuleval.evaluator.evaluator import SentenceLevelEvaluator
+from simuleval.data.dataloader.dataloader import IterableDataloader
+import contextlib
+import json
 
 def _patched_call(self, system):
-    from tqdm.contrib.logging import logging_redirect_tqdm
-    import logging
+    iterator = getattr(self, "iterator", None)
+    if iterator is None:
+        iterator = self.maybe_tqdm(self.instances.values())
 
-    logger = logging.getLogger("simuleval.evaluator")
-    with logging_redirect_tqdm(loggers=[logger]):
-        for instance in self.maybe_tqdm(self.instances.values()):
-            system.reset()
-            while not instance.finish_prediction:
+    with open(
+        self.output / "instances.log", "a"
+    ) if self.output else contextlib.nullcontext() as file:
+        system.reset()
+        for sample in iterator:
+            instance = (
+                self.instance_class(
+                    self.dataloader.cur_index, self.dataloader, self.args
+                )
+                if isinstance(self.dataloader, IterableDataloader)
+                else sample
+            )
+            while not self.is_finished(instance):
                 input_segment = instance.send_source(self.source_segment_size)
                 output_segment = system.pushpop(input_segment)
                 instance.receive_prediction(output_segment)
-            if self.output:
-                self.write_log(instance)
+                if instance.finish_prediction:
+                    system.reset()
+
+            if not self.score_only and self.output:
+                file.write(json.dumps(instance.summarize()) + "\n")
+
+    if self.output:
+        self.build_instances_from_log()
 
     results = self.results
     if self.output:
         with open(self.output / "scores", "w") as f:
             f.write(results.to_string())
 
-    logger.info("Results:")
     print(results.to_string(index=False))
 
 
@@ -106,10 +128,12 @@ class WaitKAgent(TextToTextAgent):
 
         model_name = args.model_name
         print(f"Loading model: {model_name} on {self.device}")
-        self.tokenizer = MarianTokenizer.from_pretrained(model_name)
-        self.model = MarianMTModel.from_pretrained(model_name)
-        self.model.eval()
-        self.model.to(self.device)
+        self.tokenizer, self.model, self.forced_bos_token_id = load_translation_model(
+            model_name=model_name,
+            device=self.device,
+            source_lang=args.source_lang,
+            target_lang=args.target_lang,
+        )
 
         self._current_translation = []
 
@@ -123,6 +147,7 @@ class WaitKAgent(TextToTextAgent):
             "--model-name", type=str, default="Helsinki-NLP/opus-mt-en-de",
             help="HuggingFace model name for En-De translation",
         )
+        add_language_args(parser)
         parser.add_argument(
             "--beam-size", type=int, default=4,
             help="Beam size for translation",
@@ -175,9 +200,12 @@ class WaitKAgent(TextToTextAgent):
 
         with torch.no_grad():
             output = self.model.generate(
-                **inputs,
-                num_beams=self.args.beam_size,
-                max_length=512,
+                **build_generate_kwargs(
+                    self.forced_bos_token_id,
+                    **inputs,
+                    num_beams=self.args.beam_size,
+                    max_length=512,
+                )
             )
 
         translated = self.tokenizer.decode(output[0], skip_special_tokens=True)
