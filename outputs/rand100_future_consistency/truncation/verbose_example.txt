@@ -1,0 +1,39 @@
+======================================================================
+EXAMPLE 0  (WMT19 idx 13)
+Source:   AMs are apparently suggesting alternative options, but the struggle to reach consensus could be a headache for the Presiding Officer, Elin Jones, who is expected to submit draft legislation on the changes within weeks.
+Prefix:   'AMs are apparently suggesting alternative'  (5 words)
+Reference: 显 然 ， AM 建 议 采 用 其 他 名 称 ， 但 会 议 主 席 Elin Jones 感 到 头 痛 的 是 ， 迟 迟 达 不 成 一 致 ， 因 
+
+── Distribution Divergence  [future_mode=truncation] ──────
+  ⚠ NESTED-PREFIX WARNING: nested_prefix_rate=1.00 — these futures are truncation variants, NOT branching futures.
+  ℹ Results measure same-path stability, NOT branching robustness.
+  future_diversity  : nested_rate=1.00  avg_edit=0.144  unique=1.00
+  future[1]: AMs are apparently suggesting alternative options,
+  future[2]: AMs are apparently suggesting alternative options, but
+  future[3]: AMs are apparently suggesting alternative options, but the
+  future[4]: AMs are apparently suggesting alternative options, but the struggle
+  avg_js_divergence : 0.003596
+  max_js_divergence : 0.007362
+  topk_overlap      : 0.8000
+  consensus_score   : 0.302640
+  kl_from_first     : [0.0133, 0.0314, 0.0229]
+  → decision        : COMMIT
+
+── Semantic LCP  [future_mode=truncation] ───────────────
+  ⚠ NESTED-PREFIX WARNING: futures are truncation variants.
+  future[1]: AMs are apparently suggesting alternative options,
+  zh_cont[1]: AMs似乎在提出替代方案，
+  future[2]: AMs are apparently suggesting alternative options, but
+  zh_cont[2]: AMs似乎在提出替代方案，
+  future[3]: AMs are apparently suggesting alternative options, but the
+  zh_cont[3]: AMs似乎在提出替代方案，
+  future[4]: AMs are apparently suggesting alternative options, but the s
+  zh_cont[4]: AMs似乎在提出替代方案，
+  literal_lcp       : 'AMs似乎在提出替代方案，'  (len=13)
+  avg_edit_distance : 0.0000
+  token_overlap     : 1.0000
+  semantic_agreement: 1.2083
+  safe_prefix       : 'AMs似乎在提出替代方案，'
+  → decision        : COMMIT
+======================================================================
+

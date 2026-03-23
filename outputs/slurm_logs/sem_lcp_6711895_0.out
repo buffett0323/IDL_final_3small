@@ -1,0 +1,68 @@
+===== START SEMANTIC LCP TASK 0 =====
+job_id=6711896  node=babel-m5-32  time=Sun Mar 22 05:56:18 PM EDT 2026
+index, name, memory.total [MiB], memory.free [MiB]
+0, NVIDIA L40S, 46068 MiB, 45459 MiB
+1, NVIDIA L40S, 46068 MiB, 45459 MiB
+──────────────────────────────────────────────────────
+Experiment : baseline  wait-k=5  futures=0
+Output     : /data/user_data/haolingp/IDL_final_3small/outputs/semlcp_baseline_k5
+──────────────────────────────────────────────────────
+[Cleanup] Removing partial result at /data/user_data/haolingp/IDL_final_3small/outputs/semlcp_baseline_k5
+[RUN] Baseline (NLLB wait-k=5)
+[Base] Loading seq2seq facebook/nllb-200-distilled-600M on cuda:0
+Traceback (most recent call last):
+  File "/home/haolingp/miniconda3/bin/simuleval", line 7, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/home/haolingp/miniconda3/lib/python3.13/site-packages/simuleval/cli.py", line 49, in main
+    system, args = build_system_args()
+                   ~~~~~~~~~~~~~~~~~^^
+  File "/home/haolingp/miniconda3/lib/python3.13/site-packages/simuleval/utils/agent.py", line 143, in build_system_args
+    system = system_class.from_args(args)
+  File "/home/haolingp/miniconda3/lib/python3.13/site-packages/simuleval/agents/agent.py", line 185, in from_args
+    return cls(args)
+  File "/data/user_data/haolingp/IDL_final_3small/agents/sttr_enzh_agent.py", line 245, in __init__
+    self.tokenizer, self.model, self.forced_bos_token_id = load_translation_model(
+                                                           ~~~~~~~~~~~~~~~~~~~~~~^
+        model_name=model_name,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+        cache_dir=args.cache_dir,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/data/user_data/haolingp/IDL_final_3small/agents/model_utils.py", line 36, in load_translation_model
+    model.to(device)
+    ~~~~~~~~^^^^^^^^
+  File "/home/haolingp/miniconda3/lib/python3.13/site-packages/transformers/modeling_utils.py", line 4343, in to
+    return super().to(*args, **kwargs)
+           ~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/home/haolingp/miniconda3/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1381, in to
+    return self._apply(convert)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "/home/haolingp/miniconda3/lib/python3.13/site-packages/torch/nn/modules/module.py", line 933, in _apply
+    module._apply(fn)
+    ~~~~~~~~~~~~~^^^^
+  File "/home/haolingp/miniconda3/lib/python3.13/site-packages/torch/nn/modules/module.py", line 933, in _apply
+    module._apply(fn)
+    ~~~~~~~~~~~~~^^^^
+  File "/home/haolingp/miniconda3/lib/python3.13/site-packages/torch/nn/modules/module.py", line 964, in _apply
+    param_applied = fn(param)
+  File "/home/haolingp/miniconda3/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1367, in convert
+    return t.to(
+           ~~~~^
+        device,
+        ^^^^^^^
+        dtype if t.is_floating_point() or t.is_complex() else None,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        non_blocking,
+        ^^^^^^^^^^^^^
+    )
+    ^
+torch.AcceleratorError: CUDA error: CUDA-capable device(s) is/are busy or unavailable
+Search for `cudaErrorDevicesUnavailable' in https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__TYPES.html for more information.
+CUDA kernel errors might be asynchronously reported at some other API call, so the stacktrace below might be incorrect.
+For debugging consider passing CUDA_LAUNCH_BLOCKING=1
+Compile with `TORCH_USE_CUDA_DSA` to enable device-side assertions.
+
+[DONE] Baseline

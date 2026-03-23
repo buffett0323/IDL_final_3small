@@ -4,30 +4,58 @@ CMU 11-785 Introduction to Deep Learning — Final Project
 
 ## Overview
 
-STTR extends the standard **wait-k** simultaneous translation policy with **uncertainty-gated refinement**. The key idea: most translations are easy (the model is confident), so we only spend extra compute on the hard ones.
+STTR extends the standard **wait-k** simultaneous translation policy with **uncertainty-gated selective compute**. The key idea: most translations are easy (the model is confident), so we only spend extra compute on the hard ones.
 
-**Pipeline:**
+### Current mainline: STTR-v2 (EN->ZH)
+
+The project has evolved from beam-search refinement (v1) to a more principled approach:
+
+**Why the change from beam-refine to read-more + LCP + triggered Qwen?**
+- Beam-search refinement on MarianMT showed only +0.2 BLEU for 4x compute cost
+- Read-more is a zero-cost way to reduce uncertainty (just wait for more source context)
+- LCP (Longest Common Prefix) commit is more principled than picking a single beam output — it only emits characters that ALL candidates agree on
+- Qwen3 reranking is reserved for the hardest cases (no stable LCP + source finished), keeping average latency low
+
+**STTR-v2 Pipeline:**
 1. Read k source words, then start translating (wait-k policy)
 2. Generate a draft translation with greedy decoding (beam=1)
-3. Compute token-level entropy as an uncertainty signal
-4. If entropy > threshold tau, refine via multi-candidate beam search (beam=8)
-5. Otherwise, keep the cheap draft
+3. Compute token-level uncertainty (entropy / margin)
+4. If uncertain and source available: **read more** source words (up to 3 extra)
+5. If still uncertain or source finished: generate K candidates, commit their **Longest Common Prefix (LCP)**
+6. If no stable LCP and source finished: trigger **Qwen3 reranker** (optional, hard cases only)
 
-**Language pair:** English to German (En-De)
-**Model:** Helsinki-NLP/opus-mt-en-de (~300M params, MarianMT)
-**Dataset:** WMT14 newstest (2737 sentences)
+**Language pair:** English to Chinese (EN->ZH)
+**Base model:** facebook/nllb-200-distilled-600M (~600M params)
+**Reranker:** Qwen3-30B-A3B-Instruct (FP8, triggered on hard cases only)
+**Dataset:** WMT19 En-Zh newstest (1997 sentences)
 **Evaluation:** SimulEval framework — BLEU (quality) and Average Lagging / AL (latency)
 
+### Chinese emission granularity
+
+Chinese text has no whitespace word boundaries. We use **character-level emission**: each CJK character is one emission unit. Mixed content (numbers, Latin) is grouped as single units. The reference file is pre-segmented with spaces between characters so SimulEval counts them correctly for latency metrics. BLEU scoring is unaffected because sacrebleu tokenizes Chinese by character.
+
 ## Methods
+
+### STTR-v2 (EN->ZH, current)
+
+| Method | Description |
+|--------|-------------|
+| **Baseline (wait-k, beam=1)** | Standard wait-k with greedy decoding, character-level emission |
+| **STTR-v2 (read-more + LCP)** | Uncertainty-gated: draft -> read-more -> LCP commit |
+| **STTR-v2 + Qwen** | Same as above, plus triggered Qwen3 rerank on hard cases |
+| **Always-LCP (upper bound)** | Always generates K candidates and commits LCP |
+
+Uncertainty modes: `mean` (whole-sequence entropy), `last` (last-token entropy), `tail3` (tail-3 token entropy), `margin` (1 - top1-top2 probability gap).
+
+### STTR-v1 (EN->DE, legacy)
 
 | Method | Description |
 |--------|-------------|
 | **Baseline (wait-k, beam=1)** | Standard wait-k with greedy decoding |
 | **Baseline (wait-k, beam=8)** | Compute-matched baseline — always uses 8 beams |
-| **Method B (always-refine)** | Always runs refinement at every commit point (upper bound) |
-| **Method C (STTR)** | Uncertainty-gated: draft with beam=1, refine with beam=8 only when entropy > tau |
+| **STTR-v1** | Uncertainty-gated: draft with beam=1, refine with beam=8 only when entropy > tau |
 
-## Preliminary Results
+## Preliminary Results (EN->DE, legacy)
 
 ### Wait-k Baselines (beam=1, greedy)
 
@@ -38,9 +66,7 @@ STTR extends the standard **wait-k** simultaneous translation policy with **unce
 | k=7 | 18.43 | 6.08 |
 | k=9 | 19.63 | 8.03 |
 
-Higher k = more source context before translating = better BLEU but higher latency. This is the expected quality-latency tradeoff.
-
-### STTR vs Compute-Matched Baseline (k=5)
+### STTR-v1 vs Compute-Matched Baseline (k=5)
 
 | Method | BLEU | AL | Wall Time |
 |--------|------|----|-----------|
@@ -48,31 +74,36 @@ Higher k = more source context before translating = better BLEU but higher laten
 | Baseline k=5, beam=8 | 16.92 | 4.16 | 2:08:26 |
 | STTR k=5, tau=2.0 | 16.81 | 4.15 | 2:28:31 |
 
-### Key Observations
+### Why we moved on from beam-refine
 
-- Beam=8 provides minimal improvement over beam=1 (+0.2 BLEU) on this model, suggesting opus-mt is already well-calibrated for greedy decoding on short prefixes.
-- STTR performs between the two baselines in BLEU (16.81) but takes longer due to draft+refine overhead.
-- The marginal benefit of beam search refinement is small for this particular model — a larger model (e.g., NLLB-200) where beam search helps more could show a bigger gap.
+- Beam=8 provides minimal improvement over beam=1 (+0.2 BLEU) on opus-mt, suggesting the model is already well-calibrated for greedy decoding.
+- The marginal benefit of beam search refinement is small — motivating the switch to read-more + LCP + triggered large-model rerank.
 
 ## Project Structure
 
 ```
 agents/
-  waitk_agent.py       # Wait-k baseline SimulEval agent
-  sttr_agent.py        # STTR agent with uncertainty-gated refinement
+  waitk_agent.py       # Wait-k baseline SimulEval agent (EN->DE legacy)
+  sttr_agent.py        # STTR-v1 agent with beam refinement (EN->DE legacy)
+  sttr_enzh_agent.py   # STTR-v2 agent: NLLB EN->ZH + read-more + LCP + Qwen rerank
+  model_utils.py       # Model loading, Chinese char splitting, language code handling
 scripts/
-  download_wmt.py      # Download WMT test sets via sacrebleu
+  download_wmt.py      # Download WMT14 En-De test sets
+  download_enzh_data.py # Download WMT19 En-Zh test sets (char-segmented)
+  run_enzh_smoke.sh    # Quick 5-sentence EN->ZH smoke test
+  run_enzh_full.sh     # Full WMT19 EN->ZH experiment (optional --with-qwen)
   score_baselines.py   # Score output directories (BLEU + AL)
-  run_baseline.ps1     # Run wait-k baselines for k in {3,5,7,9}
-  run_sttr.ps1         # Run STTR tau sweep {1.0, 1.5, 2.0, 2.5, 3.0}
-  run_beam8.ps1        # Run beam=8 baseline vs STTR (fair comparison)
-data/wmt/
-  wmt14_source.txt     # English source sentences (SimulEval format)
-  wmt14_target.txt     # German reference translations
+  run_baseline.sh      # Legacy: wait-k baselines for k in {3,5,7,9}
+data/
+  enzh/                # EN->ZH test data (char-segmented references)
+  wmt/                 # Legacy EN->DE WMT14 data
+tests/
+  test_enzh_agent_logic.py    # 21 tests: Chinese splitting, LCP, gate logic
+  test_sttr_agent_logic.py    # Legacy STTR-v1 gate logic tests
+  test_refinement_analysis.py # Analysis utility tests
 outputs/
-  baseline_k*/         # Wait-k baseline results
-  sttr_k*_tau*/        # STTR results for various tau
-  timing.txt           # Wall-clock execution times
+  enzh_*/              # EN->ZH experiment results
+  baseline_k*/         # Legacy EN->DE results
 ```
 
 ## Setup
@@ -83,31 +114,68 @@ pip install torch --index-url https://download.pytorch.org/whl/cu124
 
 # Install dependencies
 pip install -r requirements.txt
+```
 
-# Download WMT14 En-De test set
+### Model downloads
+
+Models are cached to `/data/user_data/haolingp/models` by default. The NLLB model (~600M) downloads automatically on first run. To pre-download:
+
+```bash
+python -c "from transformers import AutoTokenizer, AutoModelForSeq2SeqLM; \
+  AutoTokenizer.from_pretrained('facebook/nllb-200-distilled-600M', cache_dir='/data/user_data/haolingp/models'); \
+  AutoModelForSeq2SeqLM.from_pretrained('facebook/nllb-200-distilled-600M', cache_dir='/data/user_data/haolingp/models')"
+```
+
+Qwen3-30B-A3B-Instruct-FP8 should already be at `/data/user_data/haolingp/models/Qwen3-30B-A3B-Instruct-2507-FP8/`.
+
+## Running Experiments (EN->ZH)
+
+### Smoke test (5 sentences, ~15s)
+
+```bash
+bash scripts/run_enzh_smoke.sh
+```
+
+### Full experiment (WMT19, ~2000 sentences)
+
+```bash
+# Download WMT19 En-Zh data first
+python scripts/download_enzh_data.py
+
+# Run tau sweep (NLLB only, GPU0)
+bash scripts/run_enzh_full.sh
+
+# Run with Qwen reranker enabled (GPU0 + GPU1)
+bash scripts/run_enzh_full.sh --with-qwen
+```
+
+### Unit tests
+
+```bash
+python -m pytest tests/ -v
+```
+
+## Legacy experiments (EN->DE)
+
+```bash
+# Download WMT14 En-De data
 python scripts/download_wmt.py
+
+# Wait-k baselines
+bash scripts/run_baseline.sh
 ```
 
-## Running Experiments
+## GPU Assignment
 
-```powershell
-# Wait-k baselines (beam=1)
-powershell -ExecutionPolicy Bypass -File scripts/run_baseline.ps1
-
-# STTR vs beam=8 baseline (fair comparison)
-powershell -ExecutionPolicy Bypass -File scripts/run_beam8.ps1
-
-# STTR tau sweep
-powershell -ExecutionPolicy Bypass -File scripts/run_sttr.ps1
-
-# Score any output directories
-python scripts/score_baselines.py --output-dirs outputs/baseline_k5 outputs/sttr_k5_tau2.0
-```
+| GPU | Model | Purpose |
+|-----|-------|---------|
+| GPU0 | NLLB-200-distilled-600M | Base simultaneous decoding + candidate generation |
+| GPU1 | Qwen3-30B-A3B-Instruct-FP8 | Triggered reranking on hard cases (optional) |
 
 ## Next Steps
 
-- Try a larger model (NLLB-200-600M) where beam search has more impact
-- Run full tau sweep to find optimal threshold
-- Run always-refine (Method B) as quality upper bound
-- Error analysis: examine which sentences trigger refinement and whether they correlate with actual translation errors
-- Pareto frontier plot: BLEU vs AL across all methods
+- Run full WMT19 En-Zh tau sweep and find optimal threshold
+- Pareto frontier plot: BLEU vs AL across methods
+- Error analysis: do LCP commits correlate with actual hard cases?
+- Tune max-extra-reads and num-candidates
+- Compare character-level vs subword-level emission

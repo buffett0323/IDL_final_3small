@@ -1,0 +1,37 @@
+[
+  {
+    "name": "rand100_baseline_k5",
+    "n_sentences": 100,
+    "comet": 55.92,
+    "bleu": 13.462,
+    "al": 8.8
+  },
+  {
+    "name": "rand100_sttr_k5_tau3.0",
+    "n_sentences": 100,
+    "comet": 58.05,
+    "bleu": 14.917,
+    "al": 10.349
+  },
+  {
+    "name": "rand100_sttr_k5_tau3.0_qwen",
+    "n_sentences": 101,
+    "comet": 59.13,
+    "bleu": 14.929,
+    "al": 10.347
+  },
+  {
+    "name": "rand100_sttr_k5_tau5.0",
+    "n_sentences": 100,
+    "comet": 56.21,
+    "bleu": 13.687,
+    "al": 9.001
+  },
+  {
+    "name": "rand100_sttr_k5_tau5.0_qwen",
+    "n_sentences": 100,
+    "comet": 56.54,
+    "bleu": 13.843,
+    "al": 9.001
+  }
+]

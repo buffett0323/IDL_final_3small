@@ -1,0 +1,21 @@
+===== START QWEN30B TASK 2 =====
+job_id=6710536  node=babel-q9-24  time=Sun Mar 22 04:06:53 PM EDT 2026
+index, name, memory.total [MiB], memory.free [MiB]
+0, NVIDIA L40S, 46068 MiB, 45459 MiB
+──────────────────────────────────────────────────────
+Experiment  : Qwen30B-Instruct continuation  wait-k=9
+Model       : /data/user_data/haolingp/models/Qwen3-30B-A3B-Instruct-2507-FP8
+Output      : /data/user_data/haolingp/IDL_final_3small/outputs/cmp_qwen30b_cont_k9
+──────────────────────────────────────────────────────
+[Cleanup] Removing partial result at /data/user_data/haolingp/IDL_final_3small/outputs/cmp_qwen30b_cont_k9
+[RUN] Qwen30B-Instruct continuation  wait-k=9
+
+You have loaded an FP8 model on CPU and have a CUDA or XPU device available, make sure to set your model on a GPU or XPU device in order to run your model. To remove this warning, pass device_map = 'cuda' or 'xpu'. 
+2026-03-22 16:07:00 | WARNING  | transformers.quantizers.quantizer_finegrained_fp8 | You have loaded an FP8 model on CPU and have a CUDA or XPU device available, make sure to set your model on a GPU or XPU device in order to run your model. To remove this warning, pass device_map = 'cuda' or 'xpu'. 
+[Base] Loading causal LM /data/user_data/haolingp/models/Qwen3-30B-A3B-Instruct-2507-FP8 on cuda:0
+Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:  25%|██▌       | 1/4 [00:39<01:59, 39.75s/it]Loading checkpoint shards:  50%|█████     | 2/4 [01:26<01:27, 43.89s/it]Loading checkpoint shards:  75%|███████▌  | 3/4 [02:13<00:45, 45.27s/it]Loading checkpoint shards: 100%|██████████| 4/4 [02:13<00:00, 27.51s/it]Loading checkpoint shards: 100%|██████████| 4/4 [02:13<00:00, 33.43s/it]
+2026-03-22 16:09:49 | INFO     | simuleval.utils.agent | System will run on device: cuda:0. dtype: fp32
+2026-03-22 16:09:49 | INFO     | simuleval.dataloader | Evaluating from text to text.
+  0%|          | 0/100 [00:00<?, ?it/s]The following generation flags are not valid and may be ignored: ['temperature', 'top_p', 'top_k']. Set `TRANSFORMERS_VERBOSITY=info` for more details.
+2026-03-22 16:09:49 | WARNING  | transformers.generation.configuration_utils | The following generation flags are not valid and may be ignored: ['temperature', 'top_p', 'top_k']. Set `TRANSFORMERS_VERBOSITY=info` for more details.
+  1%|          | 1/100 [03:03<5:02:18, 183.22s/it]  2%|▏         | 2/100 [04:20<3:17:28, 120.91s/it]  3%|▎         | 3/100 [05:21<2:31:16, 93.58s/it]   4%|▍         | 4/100 [07:56<3:08:28, 117.79s/it]  5%|▌         | 5/100 [10:21<3:21:49, 127.47s/it]  6%|▌         | 6/100 [11:28<2:47:45, 107.08s/it]  7%|▋         | 7/100 [12:41<2:28:46, 95.98s/it]   8%|▊         | 8/100 [14:39<2:37:49, 102.93s/it]  9%|▉         | 9/100 [15:00<1:57:07, 77.23s/it]  10%|█         | 10/100 [16:18<1:56:15, 77.50s/it] 11%|█         | 11/100 [17:20<1:47:56, 72.76s/it] 12%|█▏        | 12/100 [19:08<2:02:33, 83.56s/it] 13%|█▎        | 13/100 [20:06<1:49:57, 75.84s/it] 14%|█▍        | 14/100 [21:11<1:44:05, 72.62s/it] 15%|█▌        | 15/100 [22:45<1:51:50, 78.95s/it] 16%|█▌        | 16/100 [24:07<1:51:39, 79.76s/it] 17%|█▋        | 17/100 [26:32<2:17:32, 99.42s/it]

@@ -1,0 +1,36 @@
+======================================================================
+EXAMPLE 0  (WMT19 idx 13)
+Source:   AMs are apparently suggesting alternative options, but the struggle to reach consensus could be a headache for the Presiding Officer, Elin Jones, who is expected to submit draft legislation on the changes within weeks.
+Prefix:   'AMs are apparently suggesting alternative'  (5 words)
+Reference: 显 然 ， AM 建 议 采 用 其 他 名 称 ， 但 会 议 主 席 Elin Jones 感 到 头 痛 的 是 ， 迟 迟 达 不 成 一 致 ， 因 
+
+── Distribution Divergence  [future_mode=lm_sample] ──────
+  future_diversity  : nested_rate=0.00  avg_edit=0.469  unique=1.00
+  future[1]: AMs are apparently suggesting alternative to that. But I am sure they will use t
+  future[2]: AMs are apparently suggesting alternative routes for the new, short-er, and shor
+  future[3]: AMs are apparently suggesting alternative methods of treatment other than surger
+  future[4]: AMs are apparently suggesting alternative approaches. The main idea here is that
+  avg_js_divergence : 0.018691
+  max_js_divergence : 0.033542
+  topk_overlap      : 0.7000
+  consensus_score   : 0.408953
+  kl_from_first     : [0.1300, 0.0473, 0.0365]
+  → decision        : COMMIT
+
+── Semantic LCP  [future_mode=lm_sample] ───────────────
+  future[1]: AMs are apparently suggesting alternative methods of obtaini
+  zh_cont[1]: AMs似乎正在建议一些不需要采矿
+  future[2]: AMs are apparently suggesting alternative policies to our Co
+  zh_cont[2]: AMs似乎正在向我们的国会提出
+  future[3]: AMs are apparently suggesting alternative "methods" of handl
+  zh_cont[3]: AMs似乎在建议处理8位
+  future[4]: AMs are apparently suggesting alternative definitions to ach
+  zh_cont[4]: AMs似乎正在提出替代定义以
+  literal_lcp       : 'AMs似乎'  (len=5)
+  avg_edit_distance : 0.5550
+  token_overlap     : 0.3386
+  semantic_agreement: 0.4696
+  safe_prefix       : 'AMs似乎'
+  → decision        : BORDERLINE
+======================================================================
+

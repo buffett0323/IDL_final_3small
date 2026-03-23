@@ -1,0 +1,12 @@
+===== START TASK 1 =====
+job_id=6707045  node=babel-o9-16  time=Sun Mar 22 02:28:21 PM EDT 2026
+index, name, memory.total [MiB], memory.free [MiB]
+0, NVIDIA L40S, 46068 MiB, 45459 MiB
+──────────────────────────────────────────────────────
+Experiment  : NLLB-continuation-k5
+Model       : facebook/nllb-200-distilled-600M
+Output      : /data/user_data/haolingp/IDL_final_3small/outputs/cmp_continuation_k5
+──────────────────────────────────────────────────────
+[SKIP] /data/user_data/haolingp/IDL_final_3small/outputs/cmp_continuation_k5/scores already exists.  Delete to re-run.
+    BLEU  LAAL     AL     AP    DAL  ATD
+0  8.671  8.71  8.675  0.531  7.033  0.0===== DONE (skipped) TASK 1 =====

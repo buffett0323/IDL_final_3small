@@ -1,0 +1,720 @@
+========================================================================
+CASE 01  (rand100 idx=0)
+========================================================================
+SOURCE   : AMs are apparently suggesting alternative options, but the struggle to reach consensus could be a headache for the Presiding Officer, Elin Jones, who is expected to submit draft legislation on the changes within weeks.
+PREFIX   : 'AMs are apparently suggesting alternative'  (5 words)
+REF      : 显 然 ， AM 建 议 采 用 其 他 名 称 ， 但 会 议 主 席 Elin Jones 感 到 头 痛 的 是 ， 迟 迟 达 不 成 一 致 ， 因 …
+
+STEP 1 — Sample K=4 English futures  [mode=lm_sample]
+------------------------------------------------------------
+  future[1] : AMs are apparently suggesting alternative therapies (e.g., DMT) for terminal states.
+  future[2] : AMs are apparently suggesting alternative approaches to these issues.
+  future[3] : AMs are apparently suggesting alternative courses of action.
+  future[4] : AMs are apparently suggesting alternative theories of space-time and causality, the main a
+
+  Diversity diagnostics:
+    nested_prefix_rate : 0.000  ✓ not nested
+    avg_future_edit_dist: 0.437  (0=identical  1=maximally different)
+    unique_future_ratio : 1.000
+
+STEP 2 — Distribution Divergence
+------------------------------------------------------------
+  For each future, run base MT model → get next Chinese token distribution.
+  Compare distributions with Jensen-Shannon divergence.
+
+  Pairwise JS matrix (K×K):
+    0.0000  0.0053  0.0061  0.0063
+    0.0053  0.0000  0.0006  0.0085
+    0.0061  0.0006  0.0000  0.0081
+    0.0063  0.0085  0.0081  0.0000
+
+  avg_js_divergence : 0.005837  (commit_thresh=0.05  read_thresh=0.2)
+  max_js_divergence : 0.008471
+  top-10 overlap    : 1.0000  (how many of top-10 tokens appear in ALL futures' top-k)
+  consensus_score   : 0.474796  (max_v  min_k p_k(v) — highest guaranteed probability for any token)
+  KL(p1‖pk) k=2..K  : 0.0208  0.0237  0.0240
+
+  → DD decision     : COMMIT
+
+STEP 3 — Semantic LCP
+------------------------------------------------------------
+  For each future, generate 8-token Chinese continuation.
+  Measure character-level LCP + edit distance + token overlap.
+
+  future[1] : AMs are apparently suggesting alternative interpretations of quantum t
+  zh_cont[1]: AMs似乎在建议将量子理论
+················································
+  future[2] : AMs are apparently suggesting alternative names for the "C-SPAN" chann
+  zh_cont[2]: AMs似乎正在建议为互联网上的
+················································
+  future[3] : AMs are apparently suggesting alternative strategies. When the US gove
+  zh_cont[3]: AMs似乎在建议替代策略。
+················································
+  future[4] : AMs are apparently suggesting alternative hypotheses that don’t violat
+  zh_cont[4]: AMs似乎在提出一些不违背
+················································
+
+  literal_lcp        : 'AMs似乎'  (len=5)
+  avg_edit_distance  : 0.4991  (0=identical  1=maximally different)
+  token_set_overlap  : 0.3529  (char unigram Jaccard, mean pairwise)
+  semantic_agreement : 0.4929  (combined: LCP_norm + 1-edit_dist + overlap, /3)
+  safe_prefix        : 'AMs似乎'
+
+  → LCP decision     : BORDERLINE
+
+SUMMARY
+------------------------------------------------------------
+  DD  : JS=0.0058  overlap=1.000  → COMMIT
+  LCP : len=5  edit=0.499  agree=0.493  → BORDERLINE
+  Disagreement: DD=COMMIT  LCP=BORDERLINE
+
+========================================================================
+CASE 02  (rand100 idx=1)
+========================================================================
+SOURCE   : The boy was airlifted to Rady Children's Hospital in San Diego where he is listed in critical condition.
+PREFIX   : 'The boy was airlifted to'  (5 words)
+REF      : 男 孩 被 空 运 到 圣 地 亚 哥 雷 迪 儿 童 医 院 (Rady Children's Hospital) ， 目 前 情 况 危 急 。
+
+STEP 1 — Sample K=4 English futures  [mode=lm_sample]
+------------------------------------------------------------
+  future[1] : The boy was airlifted to Royal Melbourne Hospital after he lost a great deal of blood, an
+  future[2] : The boy was airlifted to hospital by a West Midlands Air Ambulance crew following an incid
+  future[3] : The boy was airlifted to the Princess Alexandra Hospital and said to be in a "stable condi
+  future[4] : The boy was airlifted to the hospital, but he didn't ________.
+
+  Diversity diagnostics:
+    nested_prefix_rate : 0.000  ✓ not nested
+    avg_future_edit_dist: 0.571  (0=identical  1=maximally different)
+    unique_future_ratio : 1.000
+
+STEP 2 — Distribution Divergence
+------------------------------------------------------------
+  For each future, run base MT model → get next Chinese token distribution.
+  Compare distributions with Jensen-Shannon divergence.
+
+  Pairwise JS matrix (K×K):
+    0.0000  0.0166  0.0267  0.0971
+    0.0166  0.0000  0.0482  0.1499
+    0.0267  0.0482  0.0000  0.0496
+    0.0971  0.1499  0.0496  0.0000
+
+  avg_js_divergence : 0.064679  (commit_thresh=0.05  read_thresh=0.2)
+  max_js_divergence : 0.149886
+  top-10 overlap    : 0.7000  (how many of top-10 tokens appear in ALL futures' top-k)
+  consensus_score   : 0.247033  (max_v  min_k p_k(v) — highest guaranteed probability for any token)
+  KL(p1‖pk) k=2..K  : 0.0692  0.1619  0.4733
+
+  → DD decision     : BORDERLINE
+
+STEP 3 — Semantic LCP
+------------------------------------------------------------
+  For each future, generate 8-token Chinese continuation.
+  Measure character-level LCP + edit distance + token overlap.
+
+  future[1] : The boy was airlifted to hospital after the accident, but is not expec
+  zh_cont[1]: 男孩在事故后被空运
+················································
+  future[2] : The boy was airlifted to the trauma center following a fall from his h
+  zh_cont[2]: 这个男孩从他家二楼
+················································
+  future[3] : The boy was airlifted to the Royal Victoria Hospital on Monday with ma
+  zh_cont[3]: 周一，这名男孩被
+················································
+  future[4] : The boy was airlifted to hospital, while the girl was left in a coma. 
+  zh_cont[4]: 那个男孩被空运
+················································
+
+  literal_lcp        : ''  (len=0)
+  avg_edit_distance  : 0.8681  (0=identical  1=maximally different)
+  token_set_overlap  : 0.2481  (char unigram Jaccard, mean pairwise)
+  semantic_agreement : 0.1267  (combined: LCP_norm + 1-edit_dist + overlap, /3)
+  safe_prefix        : ''
+
+  → LCP decision     : READ
+
+SUMMARY
+------------------------------------------------------------
+  DD  : JS=0.0647  overlap=0.700  → BORDERLINE
+  LCP : len=0  edit=0.868  agree=0.127  → READ
+  Disagreement: DD=BORDERLINE  LCP=READ
+
+========================================================================
+CASE 03  (rand100 idx=2)
+========================================================================
+SOURCE   : Giles added the victim sustained traumatic injuries to his upper torso area.
+PREFIX   : 'Giles added the victim sustained'  (5 words)
+REF      : 贾 尔 斯 补 充 到 ， 受 害 者 的 上 半 身 受 到 创 伤 。
+
+STEP 1 — Sample K=4 English futures  [mode=lm_sample]
+------------------------------------------------------------
+  future[1] : Giles added the victim sustained severe damage on the side of her head and the top of
+  future[2] : Giles added the victim sustained injuries and asked the judge the extent to which it had h
+  future[3] : Giles added the victim sustained stab wounds to an already fatal heart attack, a court hea
+  future[4] : Giles added the victim sustained an internal organ injury in an injury and blood lost that
+
+  Diversity diagnostics:
+    nested_prefix_rate : 0.000  ✓ not nested
+    avg_future_edit_dist: 0.495  (0=identical  1=maximally different)
+    unique_future_ratio : 1.000
+
+STEP 2 — Distribution Divergence
+------------------------------------------------------------
+  For each future, run base MT model → get next Chinese token distribution.
+  Compare distributions with Jensen-Shannon divergence.
+
+  Pairwise JS matrix (K×K):
+    0.0000  0.0031  0.2054  0.0026
+    0.0031  0.0000  0.1987  0.0046
+    0.2054  0.1987  0.0000  0.1852
+    0.0026  0.0046  0.1852  0.0000
+
+  avg_js_divergence : 0.099925  (commit_thresh=0.05  read_thresh=0.2)
+  max_js_divergence : 0.205428
+  top-10 overlap    : 0.6000  (how many of top-10 tokens appear in ALL futures' top-k)
+  consensus_score   : 0.087084  (max_v  min_k p_k(v) — highest guaranteed probability for any token)
+  KL(p1‖pk) k=2..K  : 0.0125  0.9841  0.0100
+
+  → DD decision     : BORDERLINE
+
+STEP 3 — Semantic LCP
+------------------------------------------------------------
+  For each future, generate 8-token Chinese continuation.
+  Measure character-level LCP + edit distance + token overlap.
+
+  future[1] : Giles added the victim sustained stab wounds in the chest but she died
+  zh_cont[1]: 吉尔斯补充说，受害者在
+················································
+  future[2] : Giles added the victim sustained severe physical injuries and that she
+  zh_cont[2]: 吉尔斯补充说，受害者遭受
+················································
+  future[3] : Giles added the victim sustained a head wound which may have been fata
+  zh_cont[3]: 吉尔斯补充说，受害者头部
+················································
+  future[4] : Giles added the victim sustained a head trauma, which might not have k
+  zh_cont[4]: 吉尔斯补充说，受害者遭受
+················································
+
+  literal_lcp        : '吉尔斯补充说，受害者'  (len=10)
+  avg_edit_distance  : 0.1389  (0=identical  1=maximally different)
+  token_set_overlap  : 0.8291  (char unigram Jaccard, mean pairwise)
+  semantic_agreement : 0.9801  (combined: LCP_norm + 1-edit_dist + overlap, /3)
+  safe_prefix        : '吉尔斯补充说，受害者'
+
+  → LCP decision     : COMMIT
+
+SUMMARY
+------------------------------------------------------------
+  DD  : JS=0.0999  overlap=0.600  → BORDERLINE
+  LCP : len=10  edit=0.139  agree=0.980  → COMMIT
+  Disagreement: DD=BORDERLINE  LCP=COMMIT
+
+========================================================================
+CASE 04  (rand100 idx=3)
+========================================================================
+SOURCE   : Sainsbury's said it would be doubling the size of its beauty offering to up to 3,000 products, including brands such as Revlon, Essie, Tweezerman and Dr. PawPaw for the first time.
+PREFIX   : 'Sainsbury's said it would be'  (5 words)
+REF      : 塞 恩 斯 伯 里 百 货 公 司 表 示 ， 将 把 美 容 产 品 的 规 模 扩 大 一 倍 ， 推 出 3000 多 种 产 品 ， 包 括 露 华 浓…
+
+STEP 1 — Sample K=4 English futures  [mode=lm_sample]
+------------------------------------------------------------
+  future[1] : Sainsbury's said it would be raising prices on 27 April.
+  future[2] : Sainsbury's said it would be forced out of the market if the government's proposals were p
+  future[3] : Sainsbury's said it would be "careful" with its cash.
+  future[4] : Sainsbury's said it would be the "main provider" of milk in school free meal schemes. The 
+
+  Diversity diagnostics:
+    nested_prefix_rate : 0.000  ✓ not nested
+    avg_future_edit_dist: 0.562  (0=identical  1=maximally different)
+    unique_future_ratio : 1.000
+
+STEP 2 — Distribution Divergence
+------------------------------------------------------------
+  For each future, run base MT model → get next Chinese token distribution.
+  Compare distributions with Jensen-Shannon divergence.
+
+  Pairwise JS matrix (K×K):
+    0.0000  0.0155  0.0029  0.0187
+    0.0155  0.0000  0.0201  0.0186
+    0.0029  0.0201  0.0000  0.0270
+    0.0187  0.0186  0.0270  0.0000
+
+  avg_js_divergence : 0.017133  (commit_thresh=0.05  read_thresh=0.2)
+  max_js_divergence : 0.027013
+  top-10 overlap    : 0.9000  (how many of top-10 tokens appear in ALL futures' top-k)
+  consensus_score   : 0.170303  (max_v  min_k p_k(v) — highest guaranteed probability for any token)
+  KL(p1‖pk) k=2..K  : 0.0506  0.0117  0.0710
+
+  → DD decision     : COMMIT
+
+STEP 3 — Semantic LCP
+------------------------------------------------------------
+  For each future, generate 8-token Chinese continuation.
+  Measure character-level LCP + edit distance + token overlap.
+
+  future[1] : Sainsbury's said it would be "capped" at about £40 a week in 2018. A s
+  zh_cont[1]: 桑伯里表示，2
+················································
+  future[2] : Sainsbury's said it would be "exploring the possibilities of divesting
+  zh_cont[2]: 苏格兰银行表示，它
+················································
+  future[3] : Sainsbury's said it would be cutting 1,400 jobs by October, which woul
+  zh_cont[3]: 桑伯里表示，它
+················································
+  future[4] : Sainsbury's said it would be taking 5,000 jobs over the next five year
+  zh_cont[4]: 桑伯里表示，由于
+················································
+
+  literal_lcp        : ''  (len=0)
+  avg_edit_distance  : 0.4405  (0=identical  1=maximally different)
+  token_set_overlap  : 0.4770  (char unigram Jaccard, mean pairwise)
+  semantic_agreement : 0.3455  (combined: LCP_norm + 1-edit_dist + overlap, /3)
+  safe_prefix        : ''
+
+  → LCP decision     : BORDERLINE
+
+SUMMARY
+------------------------------------------------------------
+  DD  : JS=0.0171  overlap=0.900  → COMMIT
+  LCP : len=0  edit=0.440  agree=0.345  → BORDERLINE
+  Disagreement: DD=COMMIT  LCP=BORDERLINE
+
+========================================================================
+CASE 05  (rand100 idx=4)
+========================================================================
+SOURCE   : Online shopping and a shift towards buying small amounts of food daily at local convenience stores means supermarkets are having to do more to persuade people to visit.
+PREFIX   : 'Online shopping and a shift'  (5 words)
+REF      : 当 前 的 主 打 趋 势 是 网 上 购 物 ， 以 及 每 天 在 当 地 便 利 店 购 买 少 量 食 品 ， 这 就 意 味 着 ， 超 市 必 须 …
+
+STEP 1 — Sample K=4 English futures  [mode=lm_sample]
+------------------------------------------------------------
+  future[1] : Online shopping and a shift towards a more sustainable consumption model represent a trans
+  future[2] : Online shopping and a shift to online retail - the impact on consumer behaviour | Cairn In
+  future[3] : Online shopping and a shift from shopping habits
+  future[4] : Online shopping and a shift in consumer expectations and the use of social media and onlin
+
+  Diversity diagnostics:
+    nested_prefix_rate : 0.000  ✓ not nested
+    avg_future_edit_dist: 0.592  (0=identical  1=maximally different)
+    unique_future_ratio : 1.000
+
+STEP 2 — Distribution Divergence
+------------------------------------------------------------
+  For each future, run base MT model → get next Chinese token distribution.
+  Compare distributions with Jensen-Shannon divergence.
+
+  Pairwise JS matrix (K×K):
+    0.0000  0.0053  0.0018  0.0016
+    0.0053  0.0000  0.0033  0.0036
+    0.0018  0.0033  0.0000  0.0009
+    0.0016  0.0036  0.0009  0.0000
+
+  avg_js_divergence : 0.002746  (commit_thresh=0.05  read_thresh=0.2)
+  max_js_divergence : 0.005278
+  top-10 overlap    : 0.9000  (how many of top-10 tokens appear in ALL futures' top-k)
+  consensus_score   : 0.401595  (max_v  min_k p_k(v) — highest guaranteed probability for any token)
+  KL(p1‖pk) k=2..K  : 0.0197  0.0078  0.0062
+
+  → DD decision     : COMMIT
+
+STEP 3 — Semantic LCP
+------------------------------------------------------------
+  For each future, generate 8-token Chinese continuation.
+  Measure character-level LCP + edit distance + token overlap.
+
+  future[1] : Online shopping and a shift of consumer trust: How to get your custome
+  zh_cont[1]: 网上购物和消费者信任
+················································
+  future[2] : Online shopping and a shift in fashion marketing: A study of customer 
+  zh_cont[2]: 网上购物和时尚营销
+················································
+  future[3] : Online shopping and a shift in retail are not new phenomena. Yet, the 
+  zh_cont[3]: 网上购物和零售业
+················································
+  future[4] : Online shopping and a shift in the consumer base
+  zh_cont[4]: 网上购物和消费群体
+················································
+
+  literal_lcp        : '网上购物和'  (len=5)
+  avg_edit_distance  : 0.4389  (0=identical  1=maximally different)
+  token_set_overlap  : 0.4238  (char unigram Jaccard, mean pairwise)
+  semantic_agreement : 0.5367  (combined: LCP_norm + 1-edit_dist + overlap, /3)
+  safe_prefix        : '网上购物和'
+
+  → LCP decision     : COMMIT
+
+SUMMARY
+------------------------------------------------------------
+  DD  : JS=0.0027  overlap=0.900  → COMMIT
+  LCP : len=5  edit=0.439  agree=0.537  → COMMIT
+  Both agree: COMMIT
+
+========================================================================
+CASE 06  (rand100 idx=5)
+========================================================================
+SOURCE   : There is a warehouse full of goods at the Marlow HQ which are ready to be sold."
+PREFIX   : 'There is a warehouse full'  (5 words)
+REF      : 马 洛 总 部 还 有 整 整 一 仓 库 的 货 物 等 着 出 售 呢 。 “
+
+STEP 1 — Sample K=4 English futures  [mode=lm_sample]
+------------------------------------------------------------
+  future[1] : There is a warehouse full of bottles, in which there are two different types of bottles: e
+  future[2] : There is a warehouse full of rice and another one full of flour. One truck carries the
+  future[3] : There is a warehouse full of apples. The first time, half of the apples plus 10 were
+  future[4] : There is a warehouse full of rice. The first time, half of the rice plus 6 bags
+
+  Diversity diagnostics:
+    nested_prefix_rate : 0.000  ✓ not nested
+    avg_future_edit_dist: 0.464  (0=identical  1=maximally different)
+    unique_future_ratio : 1.000
+
+STEP 2 — Distribution Divergence
+------------------------------------------------------------
+  For each future, run base MT model → get next Chinese token distribution.
+  Compare distributions with Jensen-Shannon divergence.
+
+  Pairwise JS matrix (K×K):
+    0.0000  0.0155  0.0152  0.0192
+    0.0155  0.0000  0.0080  0.0069
+    0.0152  0.0080  0.0000  0.0033
+    0.0192  0.0069  0.0033  0.0000
+
+  avg_js_divergence : 0.011364  (commit_thresh=0.05  read_thresh=0.2)
+  max_js_divergence : 0.019247
+  top-10 overlap    : 0.7000  (how many of top-10 tokens appear in ALL futures' top-k)
+  consensus_score   : 0.761208  (max_v  min_k p_k(v) — highest guaranteed probability for any token)
+  KL(p1‖pk) k=2..K  : 0.0933  0.0904  0.1264
+
+  → DD decision     : COMMIT
+
+STEP 3 — Semantic LCP
+------------------------------------------------------------
+  For each future, generate 8-token Chinese continuation.
+  Measure character-level LCP + edit distance + token overlap.
+
+  future[1] : There is a warehouse full of balls. Every day, 6 balls leave the wareh
+  zh_cont[1]: 有一个仓库里装满了球。
+················································
+  future[2] : There is a warehouse full of 200 boxes of cereal. Each box contains 6 
+  zh_cont[2]: 仓库里有200箱
+················································
+  future[3] : There is a warehouse full of fruit cakes. If $5$ people take turns loa
+  zh_cont[3]: 有一个仓库里装满了果子
+················································
+  future[4] : There is a warehouse full of apples stored. In the morning, $\frac{1}{
+  zh_cont[4]: 有一个仓库里堆满了苹果。
+················································
+
+  literal_lcp        : ''  (len=0)
+  avg_edit_distance  : 0.4811  (0=identical  1=maximally different)
+  token_set_overlap  : 0.4694  (char unigram Jaccard, mean pairwise)
+  semantic_agreement : 0.3294  (combined: LCP_norm + 1-edit_dist + overlap, /3)
+  safe_prefix        : ''
+
+  → LCP decision     : BORDERLINE
+
+SUMMARY
+------------------------------------------------------------
+  DD  : JS=0.0114  overlap=0.700  → COMMIT
+  LCP : len=0  edit=0.481  agree=0.329  → BORDERLINE
+  Disagreement: DD=COMMIT  LCP=BORDERLINE
+
+========================================================================
+CASE 07  (rand100 idx=6)
+========================================================================
+SOURCE   : The couples holiday together and Jones has a 40 per cent stake in Baldwin's TV production firm.
+PREFIX   : 'The couples holiday together and'  (5 words)
+REF      : 这 两 对 夫 妇 总 是 一 起 度 假 ， 而 且 琼 斯 在 波 尔 文 的 电 视 制 作 公 司 ， 拥 有 其 40 ％ 的 股 份 。
+
+STEP 1 — Sample K=4 English futures  [mode=lm_sample]
+------------------------------------------------------------
+  future[1] : The couples holiday together and enjoy the company of each other after the work is done. W
+  future[2] : The couples holiday together and this leads to a romantic dinner for them.
+  future[3] : The couples holiday together and the bride discovers a hidden letter. The groom tells her 
+  future[4] : The couples holiday together and have dinner where they meet other couples. The dinner end
+
+  Diversity diagnostics:
+    nested_prefix_rate : 0.000  ✓ not nested
+    avg_future_edit_dist: 0.493  (0=identical  1=maximally different)
+    unique_future_ratio : 1.000
+
+STEP 2 — Distribution Divergence
+------------------------------------------------------------
+  For each future, run base MT model → get next Chinese token distribution.
+  Compare distributions with Jensen-Shannon divergence.
+
+  Pairwise JS matrix (K×K):
+    0.0000  0.0764  0.0157  0.0228
+    0.0764  0.0000  0.0525  0.0206
+    0.0157  0.0525  0.0000  0.0113
+    0.0228  0.0206  0.0113  0.0000
+
+  avg_js_divergence : 0.033229  (commit_thresh=0.05  read_thresh=0.2)
+  max_js_divergence : 0.076439
+  top-10 overlap    : 0.8000  (how many of top-10 tokens appear in ALL futures' top-k)
+  consensus_score   : 0.183959  (max_v  min_k p_k(v) — highest guaranteed probability for any token)
+  KL(p1‖pk) k=2..K  : 0.3195  0.0674  0.0931
+
+  → DD decision     : COMMIT
+
+STEP 3 — Semantic LCP
+------------------------------------------------------------
+  For each future, generate 8-token Chinese continuation.
+  Measure character-level LCP + edit distance + token overlap.
+
+  future[1] : The couples holiday together and decide to take a photo of them when t
+  zh_cont[1]: 这对夫妇一起度假，决定
+················································
+  future[2] : The couples holiday together and return from the country in time for t
+  zh_cont[2]: 这对夫妇一起度假，及时
+················································
+  future[3] : The couples holiday together and they can enjoy every minute. Given th
+  zh_cont[3]: 这对情侣一起度假，他们
+················································
+  future[4] : The couples holiday together and spend all their time in doing the sam
+  zh_cont[4]: 这对夫妇一起度假，花
+················································
+
+  literal_lcp        : '这对'  (len=2)
+  avg_edit_distance  : 0.2727  (0=identical  1=maximally different)
+  token_set_overlap  : 0.6043  (char unigram Jaccard, mean pairwise)
+  semantic_agreement : 0.5272  (combined: LCP_norm + 1-edit_dist + overlap, /3)
+  safe_prefix        : '这对'
+
+  → LCP decision     : COMMIT
+
+SUMMARY
+------------------------------------------------------------
+  DD  : JS=0.0332  overlap=0.800  → COMMIT
+  LCP : len=2  edit=0.273  agree=0.527  → COMMIT
+  Both agree: COMMIT
+
+========================================================================
+CASE 08  (rand100 idx=7)
+========================================================================
+SOURCE   : Liverpool battles Napoli in the group stage of the Champions League at 3 p.m. on Wednesday at Stadio San Paolo in Naples, Italy.
+PREFIX   : 'Liverpool battles Napoli in the'  (5 words)
+REF      : 周 三 下 午 3 点 ， 利 物 浦 队 将 在 意 大 利 那 不 勒 斯 的 圣 保 罗 球 场 (Stadio San Paolo) ， 迎 战 欧 洲…
+
+STEP 1 — Sample K=4 English futures  [mode=lm_sample]
+------------------------------------------------------------
+  future[1] : Liverpool battles Napoli in the most intense showdown of the group stages. Who is likely t
+  future[2] : Liverpool battles Napoli in the Champions League. The home team won with 5 : 3. How many
+  future[3] : Liverpool battles Napoli in the early kick-off of Group A with a place in the last 16
+  future[4] : Liverpool battles Napoli in the Premier League’s final match on Wednesday night, which cou
+
+  Diversity diagnostics:
+    nested_prefix_rate : 0.000  ✓ not nested
+    avg_future_edit_dist: 0.525  (0=identical  1=maximally different)
+    unique_future_ratio : 1.000
+
+STEP 2 — Distribution Divergence
+------------------------------------------------------------
+  For each future, run base MT model → get next Chinese token distribution.
+  Compare distributions with Jensen-Shannon divergence.
+
+  Pairwise JS matrix (K×K):
+    0.0000  0.0004  0.0024  0.0137
+    0.0004  0.0000  0.0020  0.0152
+    0.0024  0.0020  0.0000  0.0205
+    0.0137  0.0152  0.0205  0.0000
+
+  avg_js_divergence : 0.009033  (commit_thresh=0.05  read_thresh=0.2)
+  max_js_divergence : 0.020549
+  top-10 overlap    : 0.9000  (how many of top-10 tokens appear in ALL futures' top-k)
+  consensus_score   : 0.794020  (max_v  min_k p_k(v) — highest guaranteed probability for any token)
+  KL(p1‖pk) k=2..K  : 0.0018  0.0106  0.0434
+
+  → DD decision     : COMMIT
+
+STEP 3 — Semantic LCP
+------------------------------------------------------------
+  For each future, generate 8-token Chinese continuation.
+  Measure character-level LCP + edit distance + token overlap.
+
+  future[1] : Liverpool battles Napoli in the European Champions League final this w
+  zh_cont[1]: 利物浦在欧洲冠军联赛
+················································
+  future[2] : Liverpool battles Napoli in the second leg of Champions League quarter
+  zh_cont[2]: 利物浦今晚与那不
+················································
+  future[3] : Liverpool battles Napoli in the Premier League at Anfield, with Brenda
+  zh_cont[3]: 利物浦在安菲尔德
+················································
+  future[4] : Liverpool battles Napoli in the final of the Women's Champions League.
+  zh_cont[4]: 利物浦在女足欧冠决赛
+················································
+
+  literal_lcp        : '利物浦'  (len=3)
+  avg_edit_distance  : 0.6208  (0=identical  1=maximally different)
+  token_set_overlap  : 0.2901  (char unigram Jaccard, mean pairwise)
+  semantic_agreement : 0.3481  (combined: LCP_norm + 1-edit_dist + overlap, /3)
+  safe_prefix        : '利物浦'
+
+  → LCP decision     : BORDERLINE
+
+SUMMARY
+------------------------------------------------------------
+  DD  : JS=0.0090  overlap=0.900  → COMMIT
+  LCP : len=3  edit=0.621  agree=0.348  → BORDERLINE
+  Disagreement: DD=COMMIT  LCP=BORDERLINE
+
+========================================================================
+CASE 09  (rand100 idx=8)
+========================================================================
+SOURCE   : A woman appeared at the scene in tears.
+PREFIX   : 'A woman appeared at the'  (5 words)
+REF      : 一 女 子 现 场 痛 哭 不 已 。
+
+STEP 1 — Sample K=4 English futures  [mode=lm_sample]
+------------------------------------------------------------
+  future[1] : A woman appeared at the police station with a broken front door of her neighbor's house. S
+  future[2] : A woman appeared at the police station to make a report. When asked by the police officer:
+  future[3] : A woman appeared at the city Hall on Monday, February 16, 1879, accompanied by her friend,
+  future[4] : A woman appeared at the door and, in the dim light, she looked like a skeleton.
+
+  Diversity diagnostics:
+    nested_prefix_rate : 0.000  ✓ not nested
+    avg_future_edit_dist: 0.564  (0=identical  1=maximally different)
+    unique_future_ratio : 1.000
+
+STEP 2 — Distribution Divergence
+------------------------------------------------------------
+  For each future, run base MT model → get next Chinese token distribution.
+  Compare distributions with Jensen-Shannon divergence.
+
+  Pairwise JS matrix (K×K):
+    0.0000  0.0058  0.0537  0.0067
+    0.0058  0.0000  0.0718  0.0019
+    0.0537  0.0718  0.0000  0.0672
+    0.0067  0.0019  0.0672  0.0000
+
+  avg_js_divergence : 0.034500  (commit_thresh=0.05  read_thresh=0.2)
+  max_js_divergence : 0.071761
+  top-10 overlap    : 0.6000  (how many of top-10 tokens appear in ALL futures' top-k)
+  consensus_score   : 0.608728  (max_v  min_k p_k(v) — highest guaranteed probability for any token)
+  KL(p1‖pk) k=2..K  : 0.0327  0.1960  0.0539
+
+  → DD decision     : COMMIT
+
+STEP 3 — Semantic LCP
+------------------------------------------------------------
+  For each future, generate 8-token Chinese continuation.
+  Measure character-level LCP + edit distance + token overlap.
+
+  future[1] : A woman appeared at the court demanding that a man be executed after p
+  zh_cont[1]: 一名女子出现在法庭上，要求
+················································
+  future[2] : A woman appeared at the police station to report a stolen property. Af
+  zh_cont[2]: 一名女子来到警察局报案，
+················································
+  future[3] : A woman appeared at the office in her early 30s. She said she wanted t
+  zh_cont[3]: 一位年轻女子出现在办公室，她
+················································
+  future[4] : A woman appeared at the door in a red evening dress and wore two rings
+  zh_cont[4]: 一位女士穿着红色晚礼服
+················································
+
+  literal_lcp        : '一'  (len=1)
+  avg_edit_distance  : 0.7524  (0=identical  1=maximally different)
+  token_set_overlap  : 0.1841  (char unigram Jaccard, mean pairwise)
+  semantic_agreement : 0.1855  (combined: LCP_norm + 1-edit_dist + overlap, /3)
+  safe_prefix        : '一'
+
+  → LCP decision     : BORDERLINE
+
+SUMMARY
+------------------------------------------------------------
+  DD  : JS=0.0345  overlap=0.600  → COMMIT
+  LCP : len=1  edit=0.752  agree=0.186  → BORDERLINE
+  Disagreement: DD=COMMIT  LCP=BORDERLINE
+
+========================================================================
+CASE 10  (rand100 idx=9)
+========================================================================
+SOURCE   : At 2pm two police vans were inside the cordon with another van just outside.
+PREFIX   : 'At 2pm two police vans'  (5 words)
+REF      : 下 午 2 点 ， 警 戒 线 内 停 了 两 辆 警 车 ， 警 戒 线 外 停 着 一 辆 面 包 车 。
+
+STEP 1 — Sample K=4 English futures  [mode=lm_sample]
+------------------------------------------------------------
+  future[1] : At 2pm two police vans start off to catch a bank robbers van which has just entered
+  future[2] : At 2pm two police vans start from different towns $A$ and $B$ which are 80km apart. Van
+  future[3] : At 2pm two police vans , one from station C and the other from Station D, start
+  future[4] : At 2pm two police vans leave from the same intersection on the same street. Each van has
+
+  Diversity diagnostics:
+    nested_prefix_rate : 0.000  ✓ not nested
+    avg_future_edit_dist: 0.545  (0=identical  1=maximally different)
+    unique_future_ratio : 1.000
+
+STEP 2 — Distribution Divergence
+------------------------------------------------------------
+  For each future, run base MT model → get next Chinese token distribution.
+  Compare distributions with Jensen-Shannon divergence.
+
+  Pairwise JS matrix (K×K):
+    0.0000  0.1572  0.0065  0.0141
+    0.1572  0.0000  0.1230  0.1121
+    0.0065  0.1230  0.0000  0.0033
+    0.0141  0.1121  0.0033  0.0000
+
+  avg_js_divergence : 0.069372  (commit_thresh=0.05  read_thresh=0.2)
+  max_js_divergence : 0.157176
+  top-10 overlap    : 0.5000  (how many of top-10 tokens appear in ALL futures' top-k)
+  consensus_score   : 0.272194  (max_v  min_k p_k(v) — highest guaranteed probability for any token)
+  KL(p1‖pk) k=2..K  : 0.8634  0.0266  0.0587
+
+  → DD decision     : BORDERLINE
+
+STEP 3 — Semantic LCP
+------------------------------------------------------------
+  For each future, generate 8-token Chinese continuation.
+  Measure character-level LCP + edit distance + token overlap.
+
+  future[1] : At 2pm two police vans drive to the scene of a major traffic accident,
+  zh_cont[1]: 下午2点，两辆警车
+················································
+  future[2] : At 2pm two police vans set out simultaneously on a journey in search o
+  zh_cont[2]: 2点，两辆警车
+················································
+  future[3] : At 2pm two police vans leave a police station at the same time - they 
+  zh_cont[3]: 2点时，两辆警
+················································
+  future[4] : At 2pm two police vans leave from the same position in opposite direct
+  zh_cont[4]: 2点时，两辆警
+················································
+
+  literal_lcp        : ''  (len=0)
+  avg_edit_distance  : 0.2804  (0=identical  1=maximally different)
+  token_set_overlap  : 0.7463  (char unigram Jaccard, mean pairwise)
+  semantic_agreement : 0.4886  (combined: LCP_norm + 1-edit_dist + overlap, /3)
+  safe_prefix        : ''
+
+  → LCP decision     : BORDERLINE
+
+SUMMARY
+------------------------------------------------------------
+  DD  : JS=0.0694  overlap=0.500  → BORDERLINE
+  LCP : len=0  edit=0.280  agree=0.489  → BORDERLINE
+  Both agree: BORDERLINE
+
+
+========================================================================
+AGGREGATE  (10 cases)  [future_mode=lm_sample  K=4]
+========================================================================
+Future diversity:
+  nested_prefix_rate   mean=0.000  (mostly branching = lm_sample mode)
+  avg_future_edit_dist mean=0.525  median=0.535
+
+Distribution Divergence:
+  avg_js   mean=0.0348  median=0.0252
+  COMMIT=7  BORDERLINE=3  READ=0
+
+Semantic LCP:
+  literal_lcp_len  mean=2.60  median=1.50
+  avg_edit_dist    mean=0.4793  median=0.4608
+  semantic_agree   mean=0.4361  median=0.4184
+  COMMIT=3  BORDERLINE=6  READ=1
+
+DD/LCP agreement: 3/10 cases agree on same decision
+

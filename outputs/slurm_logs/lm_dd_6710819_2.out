@@ -1,0 +1,16 @@
+===== START LM-SAMPLE DD TASK 2 =====
+job_id=6710897  node=babel-q5-28  time=Sun Mar 22 04:38:50 PM EDT 2026
+index, name, memory.total [MiB], memory.free [MiB]
+0, NVIDIA L40S, 46068 MiB, 45459 MiB
+[INFO] Future LM: /data/user_data/haolingp/hf_cache/hub/models--Qwen--Qwen2.5-7B-Instruct/snapshots/a09a35458c702b33eeacc393d103063234e8bc28
+──────────────────────────────────────────────────────
+Experiment : dd_lm_sample  wait-k=5  tau=0.05
+Output     : /data/user_data/haolingp/IDL_final_3small/outputs/lmsdd_lm_tau0.05
+──────────────────────────────────────────────────────
+[Cleanup] Removing partial result at /data/user_data/haolingp/IDL_final_3small/outputs/lmsdd_lm_tau0.05
+[RUN] simuleval --agent /data/user_data/haolingp/IDL_final_3small/agents/sttr_enzh_agent.py --source data/enzh/rand100_source.txt --target data/enzh/rand100_target.txt --source-lang eng_Latn --target-lang zho_Hans --wait-k 5 --model-name facebook/nllb-200-distilled-600M --device cuda:0 --output /data/user_data/haolingp/IDL_final_3small/outputs/lmsdd_lm_tau0.05 --beam-size 1 --uncertainty-threshold 999 --dd-gate --dd-tau 0.05 --dd-futures-k 4 --dd-steps 3 --dd-future-mode lm_sample --dd-future-lm /data/user_data/haolingp/hf_cache/hub/models--Qwen--Qwen2.5-7B-Instruct/snapshots/a09a35458c702b33eeacc393d103063234e8bc28 --dd-future-words 15 --dd-future-temperature 0.9
+
+`torch_dtype` is deprecated! Use `dtype` instead!
+[Base] Loading seq2seq facebook/nllb-200-distilled-600M on cuda:0
+[DD-LM] Loading future LM /data/user_data/haolingp/hf_cache/hub/models--Qwen--Qwen2.5-7B-Instruct/snapshots/a09a35458c702b33eeacc393d103063234e8bc28 on cuda:0
+Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]

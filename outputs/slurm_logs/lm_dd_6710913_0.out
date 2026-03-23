@@ -1,0 +1,12 @@
+===== START LM-SAMPLE DD TASK 0 =====
+job_id=6710924  node=babel-q5-28  time=Sun Mar 22 04:40:28 PM EDT 2026
+index, name, memory.total [MiB], memory.free [MiB]
+0, NVIDIA L40S, 46068 MiB, 45459 MiB
+[INFO] Future LM: /data/user_data/haolingp/models/Qwen3-4B-Base
+──────────────────────────────────────────────────────
+Experiment : baseline  wait-k=5  tau=0.00
+Output     : /data/user_data/haolingp/IDL_final_3small/outputs/lmsdd_baseline_k5
+──────────────────────────────────────────────────────
+[SKIP] /data/user_data/haolingp/IDL_final_3small/outputs/lmsdd_baseline_k5/scores already exists.  Delete to re-run.
+     BLEU   LAAL   AL     AP    DAL  ATD
+0  13.462  8.816  8.8  0.583  7.531  0.0===== DONE (skipped) TASK 0 =====

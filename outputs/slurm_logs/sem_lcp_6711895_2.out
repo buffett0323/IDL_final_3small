@@ -1,0 +1,15 @@
+===== START SEMANTIC LCP TASK 2 =====
+job_id=6711895  node=babel-q9-24  time=Sun Mar 22 05:57:21 PM EDT 2026
+index, name, memory.total [MiB], memory.free [MiB]
+0, NVIDIA L40S, 46068 MiB, 45459 MiB
+1, NVIDIA L40S, 46068 MiB, 45459 MiB
+──────────────────────────────────────────────────────
+Experiment : semantic_lcp  wait-k=5  futures=6
+Output     : /data/user_data/haolingp/IDL_final_3small/outputs/semlcp_main_k5_f6
+──────────────────────────────────────────────────────
+[Cleanup] Removing partial result at /data/user_data/haolingp/IDL_final_3small/outputs/semlcp_main_k5_f6
+[vLLM] Starting Qwen30B-Instruct on GPU 0, port 8200
+[vLLM] Server PID: 2262424
+[vLLM] Waiting for server to be ready...
+[ERROR] vLLM server failed to start within 180s. Check /data/user_data/haolingp/IDL_final_3small/outputs/semlcp_main_k5_f6/vllm_server.log
+/home/haolingp/miniconda3/bin/python: Error while finding module specification for 'vllm.entrypoints.openai.api_server' (ModuleNotFoundError: No module named 'vllm')

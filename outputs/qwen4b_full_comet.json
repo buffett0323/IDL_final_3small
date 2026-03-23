@@ -1,0 +1,37 @@
+[
+  {
+    "name": "rand100_baseline_k5",
+    "n_sentences": 100,
+    "comet": 55.92,
+    "bleu": 13.462,
+    "al": 8.8
+  },
+  {
+    "name": "rand100_qwen4b_base_only",
+    "n_sentences": 100,
+    "comet": 73.42,
+    "bleu": 26.647,
+    "al": 8.744
+  },
+  {
+    "name": "rand100_qwen4b_sttr_tau3.0",
+    "n_sentences": 100,
+    "comet": 74.09,
+    "bleu": 27.038,
+    "al": 9.003
+  },
+  {
+    "name": "rand100_qwen4b_logprob_rerank",
+    "n_sentences": 100,
+    "comet": 73.95,
+    "bleu": 28.423,
+    "al": 9.003
+  },
+  {
+    "name": "rand100_qwen4b_qwen30b_always",
+    "n_sentences": 100,
+    "comet": 75.78,
+    "bleu": 28.952,
+    "al": 8.747
+  }
+]
