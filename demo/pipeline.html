@@ -1,0 +1,3197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Selective Test-Time Reasoning for Streaming Speech Translation — Demo (CMU 11-785)</title>
+  <style>
+    :root {
+      --bg: #fcfaf5;
+      --bg-soft: #f4efe3;
+      --muted-bg: #f6f1e7;
+      --panel: rgba(255, 252, 246, 0.9);
+      --border: #d6c9b2;
+      --border-strong: #b59d74;
+      --text: #1f1a16;
+      --muted: #62584c;
+      --accent: #8c3b2a;
+      --accent-strong: #6d281a;
+      --accent-soft: #f4ddd5;
+      --support: #174f4a;
+      --support-soft: #dceeea;
+      --main: #153d74;
+      --main-soft: #dde8f8;
+      --read: #0d7377;
+      --write: #c62828;
+      --shadow: 0 14px 36px rgba(92, 66, 28, 0.1);
+      --mono: "IBM Plex Mono", "SFMono-Regular", Menlo, monospace;
+      --sans: "IBM Plex Sans", "Avenir Next", "Segoe UI", sans-serif;
+      --display: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--sans);
+      font-size: 15px;
+      line-height: 1.55;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(140, 59, 42, 0.08), transparent 28%),
+        radial-gradient(circle at top right, rgba(21, 61, 116, 0.08), transparent 22%),
+        linear-gradient(180deg, #f8f2e9 0%, var(--bg) 18%, #fffdf8 100%);
+    }
+
+    .wrap {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+
+    header {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid rgba(181, 157, 116, 0.45);
+      border-radius: 24px;
+      padding: 1.5rem 1.5rem 1.75rem;
+      margin-bottom: 2rem;
+      background:
+        linear-gradient(135deg, rgba(255, 250, 242, 0.98), rgba(247, 240, 229, 0.95)),
+        var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    .course {
+      font-size: 0.8rem;
+      color: var(--accent-strong);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      margin: 0 0 0.35rem;
+      font-weight: 700;
+    }
+
+    h1 {
+      font-family: var(--display);
+      font-size: clamp(2.2rem, 3.2vw, 3.4rem);
+      font-weight: 700;
+      line-height: 1.25;
+      margin: 0 0 0.5rem;
+      max-width: 11ch;
+    }
+
+    .subtitle {
+      margin: 0;
+      color: var(--muted);
+      font-size: 1rem;
+      max-width: 44rem;
+    }
+
+    .eyebrow {
+      margin: 0 0 0.5rem;
+      color: var(--support);
+      font-size: 0.82rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+
+    .hero-grid {
+      display: grid;
+      gap: 1.25rem;
+      align-items: start;
+      margin-top: 0.75rem;
+    }
+
+    @media (min-width: 920px) {
+      .hero-grid {
+        grid-template-columns: minmax(0, 1.45fr) minmax(320px, 0.95fr);
+      }
+    }
+
+    .hero-copy {
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.55rem;
+      margin-top: 1rem;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.4rem 0.7rem;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.78);
+      border: 1px solid rgba(181, 157, 116, 0.5);
+      font-size: 0.82rem;
+      color: var(--text);
+    }
+
+    .hero-badge strong {
+      color: var(--accent-strong);
+    }
+
+    .hero-card {
+      position: relative;
+      z-index: 1;
+      padding: 1rem 1rem 1.1rem;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid rgba(181, 157, 116, 0.45);
+      backdrop-filter: blur(10px);
+    }
+
+    .hero-card h3 {
+      margin: 0 0 0.5rem;
+      font-size: 0.95rem;
+      color: var(--accent-strong);
+    }
+
+    .hero-card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .hero-card ul {
+      margin: 0.75rem 0 0;
+      padding-left: 1.1rem;
+      color: var(--text);
+      font-size: 0.9rem;
+    }
+
+    .hero-card li + li {
+      margin-top: 0.45rem;
+    }
+
+    .hero-metrics {
+      display: grid;
+      gap: 0.9rem;
+      margin-top: 1.25rem;
+    }
+
+    @media (min-width: 900px) {
+      .hero-metrics {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+    }
+
+    .metric-hero {
+      padding: 1rem 1rem 1.05rem;
+      border-radius: 18px;
+      border: 1px solid rgba(181, 157, 116, 0.45);
+      background: rgba(255, 255, 255, 0.72);
+      box-shadow: 0 8px 20px rgba(92, 66, 28, 0.06);
+    }
+
+    .metric-hero.main {
+      background: linear-gradient(135deg, rgba(221, 232, 248, 0.88), rgba(255, 255, 255, 0.78));
+      border-color: rgba(21, 61, 116, 0.2);
+    }
+
+    .metric-hero.support {
+      background: linear-gradient(135deg, rgba(220, 238, 234, 0.9), rgba(255, 255, 255, 0.78));
+      border-color: rgba(23, 79, 74, 0.2);
+    }
+
+    .metric-hero.stream {
+      background: linear-gradient(135deg, rgba(244, 221, 213, 0.95), rgba(255, 255, 255, 0.78));
+      border-color: rgba(140, 59, 42, 0.18);
+    }
+
+    .metric-label {
+      margin: 0 0 0.35rem;
+      color: var(--muted);
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 700;
+    }
+
+    .metric-value {
+      font-size: clamp(1.3rem, 2vw, 1.8rem);
+      line-height: 1.2;
+      font-weight: 700;
+      margin: 0;
+      color: var(--text);
+    }
+
+    .metric-value strong {
+      color: var(--accent-strong);
+    }
+
+    .metric-note {
+      margin: 0.45rem 0 0;
+      color: var(--muted);
+      font-size: 0.84rem;
+    }
+
+    h2 {
+      font-family: var(--display);
+      font-size: 1.55rem;
+      font-weight: 700;
+      margin: 2.25rem 0 0.65rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid rgba(181, 157, 116, 0.45);
+    }
+
+    h2:first-of-type {
+      border-top: none;
+      padding-top: 0;
+    }
+
+    .panel {
+      background: linear-gradient(180deg, rgba(255, 252, 246, 0.92), rgba(246, 241, 231, 0.88));
+      border: 1px solid rgba(181, 157, 116, 0.45);
+      border-radius: 18px;
+      padding: 1rem 1.1rem;
+      margin-top: 0.75rem;
+      box-shadow: 0 10px 24px rgba(92, 66, 28, 0.05);
+    }
+
+    .step-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+
+    .step-counter {
+      font-family: var(--mono);
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+
+    .step-counter strong {
+      color: var(--text);
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    button {
+      font-family: var(--sans);
+      font-size: 0.85rem;
+      padding: 0.45rem 0.9rem;
+      border-radius: 999px;
+      border: 1px solid rgba(181, 157, 116, 0.55);
+      background: rgba(255, 255, 255, 0.82);
+      color: var(--text);
+      cursor: pointer;
+    }
+
+    button:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    button.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    button.primary:hover {
+      filter: brightness(1.05);
+      color: #fff;
+    }
+
+    button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .grid-4 {
+      display: grid;
+      gap: 0.75rem;
+      grid-template-columns: 1fr;
+    }
+
+    @media (min-width: 800px) {
+      .grid-4 {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    .state-card {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.85rem;
+      min-height: 5.5rem;
+      transition: box-shadow 0.2s, border-color 0.2s;
+    }
+
+    .state-card.pulse {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(11, 87, 208, 0.15);
+    }
+
+    .state-card h3 {
+      margin: 0 0 0.4rem;
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.3rem;
+      font-family: var(--mono);
+      font-size: 0.82rem;
+    }
+
+    .chip {
+      padding: 0.15rem 0.4rem;
+      background: var(--muted-bg);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+    }
+
+    .chip.new {
+      background: #e8f0fe;
+      border-color: #a8c7fa;
+      font-weight: 600;
+    }
+
+    .badge {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      padding: 0.2rem 0.45rem;
+      border-radius: 3px;
+      margin-bottom: 0.35rem;
+    }
+
+    .badge.read { background: #e0f2f1; color: var(--read); }
+    .badge.write { background: #ffebee; color: var(--write); }
+
+    .detail-line {
+      font-size: 0.88rem;
+      color: var(--text);
+      margin: 0;
+    }
+
+    .zh-line {
+      font-family: var(--mono);
+      font-size: 1rem;
+      letter-spacing: 0.12em;
+      line-height: 1.6;
+    }
+
+    .zh-line .pending {
+      color: #b0b5c0;
+      border-bottom: 1px dashed var(--border);
+    }
+
+    .zh-line .committed {
+      color: var(--text);
+      font-weight: 500;
+    }
+
+    .zh-line .just {
+      background: #fff8e1;
+      padding: 0 2px;
+    }
+
+    .formula {
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin: 0.35rem 0 0;
+    }
+
+    .log {
+      margin-top: 1rem;
+      max-height: 220px;
+      overflow-y: auto;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg);
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      line-height: 1.45;
+    }
+
+    .log-line {
+      padding: 0.35rem 0.65rem;
+      border-bottom: 1px solid #eee;
+    }
+
+    .log-line:last-child {
+      border-bottom: none;
+      background: #fafbff;
+    }
+
+    .diagram {
+      width: 100%;
+      max-width: 100%;
+      height: auto;
+      margin: 1rem 0;
+    }
+
+    .two-col {
+      display: grid;
+      gap: 1rem;
+      grid-template-columns: 1fr;
+      margin-top: 0.75rem;
+    }
+
+    @media (min-width: 640px) {
+      .two-col { grid-template-columns: 1fr 1fr; }
+    }
+
+    .method {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0.85rem 1rem;
+      font-size: 0.88rem;
+      background: rgba(255, 255, 255, 0.78);
+    }
+
+    .method h3 {
+      margin: 0 0 0.4rem;
+      font-size: 0.95rem;
+    }
+
+    .method p {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .foot {
+      margin-top: 2.5rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+
+    .foot code {
+      font-size: 0.85em;
+      background: var(--muted-bg);
+      padding: 0.1rem 0.35rem;
+      border-radius: 3px;
+    }
+
+    audio { width: 100%; margin-top: 0.5rem; }
+
+    .note {
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin: 0.5rem 0 0;
+    }
+
+    .diagram-wide {
+      width: 100%;
+      max-width: 100%;
+      height: auto;
+      margin: 1rem 0;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: #fafbfc;
+    }
+
+    .method-grid {
+      display: grid;
+      gap: 1rem;
+      grid-template-columns: 1fr;
+      margin-top: 0.75rem;
+    }
+
+    @media (min-width: 640px) {
+      .method-grid { grid-template-columns: 1fr 1fr; }
+    }
+    @media (min-width: 1000px) {
+      .method-grid.three-col { grid-template-columns: 1fr 1fr 1fr; }
+    }
+
+    .method-card {
+      border: 1px solid rgba(181, 157, 116, 0.45);
+      border-radius: 18px;
+      overflow: hidden;
+      background: rgba(255, 255, 255, 0.82);
+      transition: box-shadow 0.15s, border-color 0.15s;
+    }
+
+    .method-card:hover {
+      border-color: #a8c7fa;
+      box-shadow: 0 2px 8px rgba(11, 87, 208, 0.08);
+    }
+
+    .method-card.is-open {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px rgba(11, 87, 208, 0.2);
+    }
+
+    .method-toggle {
+      width: 100%;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.75rem;
+      text-align: left;
+      padding: 0.9rem 1rem;
+      margin: 0;
+      border: none;
+      background: var(--muted-bg);
+      cursor: pointer;
+      font: inherit;
+      color: inherit;
+    }
+
+    .method-toggle:hover {
+      background: #eef1f6;
+    }
+
+    .method-toggle:focus {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .method-toggle .method-title-wrap {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .method-toggle h3 {
+      margin: 0 0 0.25rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+
+    .method-toggle .method-hint {
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+
+    .method-toggle .chevron {
+      flex-shrink: 0;
+      font-size: 0.7rem;
+      color: var(--muted);
+      transition: transform 0.2s;
+    }
+
+    .method-card.is-open .method-toggle .chevron {
+      transform: rotate(180deg);
+    }
+
+    .method-panel {
+      padding: 0 1rem 1rem;
+      border-top: 1px solid var(--border);
+      background: var(--bg);
+    }
+
+    .method-panel[hidden] {
+      display: none;
+    }
+
+    .method-panel p {
+      margin: 0.65rem 0 0;
+      font-size: 0.86rem;
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    .method-panel p:first-child {
+      margin-top: 0.75rem;
+    }
+
+    .method-panel .cmd {
+      display: block;
+      margin-top: 0.5rem;
+      padding: 0.5rem 0.65rem;
+      background: var(--muted-bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      line-height: 1.4;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .method-panel .file-links {
+      margin-top: 0.65rem;
+      font-size: 0.82rem;
+    }
+
+    .method-panel .file-links a {
+      color: var(--accent);
+      text-decoration: none;
+      font-family: var(--mono);
+      font-size: 0.78rem;
+    }
+
+    .method-panel .file-links a:hover {
+      text-decoration: underline;
+    }
+
+    .track-mini {
+      width: 100%;
+      height: auto;
+      margin: 0.75rem 0 0;
+      display: block;
+    }
+
+    .results-table-wrap {
+      overflow-x: auto;
+      margin: 0.75rem 0 0;
+      border: 1px solid rgba(181, 157, 116, 0.45);
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.75);
+    }
+
+    .results-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+    }
+
+    .results-table th,
+    .results-table td {
+      padding: 0.45rem 0.6rem;
+      text-align: right;
+      border-bottom: 1px solid #eee;
+    }
+
+    .results-table th:first-child,
+    .results-table td:first-child {
+      text-align: left;
+    }
+
+    .results-table th {
+      background: rgba(244, 239, 227, 0.92);
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .results-table tbody tr:hover {
+      background: #fafbff;
+    }
+
+    .results-table .delta-pos {
+      color: #0d5c2f;
+      font-weight: 600;
+    }
+
+    .scatter-caption {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin: 0.5rem 0 0;
+    }
+
+    .caption-strong {
+      color: var(--text);
+      font-weight: 500;
+    }
+
+    .dd-walkthrough {
+      margin-top: 0.75rem;
+    }
+
+    .dd-glossary {
+      font-size: 0.86rem;
+      line-height: 1.55;
+      color: var(--text);
+      margin: 0;
+    }
+
+    .dd-glossary dt {
+      font-weight: 600;
+      margin: 0.65rem 0 0.2rem;
+      color: var(--text);
+    }
+
+    .dd-glossary dd {
+      margin: 0 0 0 0.5rem;
+      color: var(--muted);
+    }
+
+    .dd-glossary dd strong {
+      color: var(--text);
+    }
+
+    .dd-step-title {
+      font-size: 0.92rem;
+      font-weight: 600;
+      margin: 0 0 0.35rem;
+    }
+
+    .dd-narrative {
+      font-size: 0.88rem;
+      color: var(--text);
+      line-height: 1.5;
+      margin: 0 0 0.75rem;
+    }
+
+    .dd-futures-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin: 0.5rem 0;
+    }
+
+    .dd-future-chip {
+      font-family: var(--mono);
+      font-size: 0.76rem;
+      padding: 0.35rem 0.5rem;
+      background: #f3e5f5;
+      border: 1px solid #ce93d8;
+      border-radius: 4px;
+      max-width: 100%;
+    }
+
+    .dd-dist-grid {
+      display: grid;
+      gap: 0.65rem;
+      margin: 0.65rem 0;
+    }
+
+    @media (min-width: 700px) {
+      .dd-dist-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    .dd-future-dist {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.5rem 0.6rem;
+      background: var(--bg);
+      font-size: 0.78rem;
+    }
+
+    .dd-future-dist h4 {
+      margin: 0 0 0.4rem;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+    }
+
+    .dd-bar-row {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      margin: 0.2rem 0;
+      font-family: var(--mono);
+    }
+
+    .dd-bar-row span:first-child {
+      width: 1.5rem;
+      text-align: center;
+    }
+
+    .dd-bar {
+      flex: 1;
+      height: 10px;
+      background: #e8eaf0;
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .dd-bar > i {
+      display: block;
+      height: 100%;
+      background: linear-gradient(90deg, #0b57d0, #42a5f5);
+      border-radius: 2px;
+    }
+
+    .dd-js-badge {
+      display: inline-block;
+      font-family: var(--mono);
+      font-size: 0.85rem;
+      font-weight: 700;
+      padding: 0.35rem 0.65rem;
+      border-radius: 4px;
+      margin: 0.35rem 0.25rem 0.35rem 0;
+    }
+
+    .dd-js-badge.high {
+      background: #ffebee;
+      color: #c62828;
+      border: 1px solid #ef9a9a;
+    }
+
+    .dd-js-badge.low {
+      background: #e8f5e9;
+      color: #2e7d32;
+      border: 1px solid #a5d6a7;
+    }
+
+    .dd-gate-out {
+      font-size: 0.88rem;
+      padding: 0.65rem 0.85rem;
+      border-radius: 6px;
+      margin-top: 0.5rem;
+      border-left: 4px solid var(--border);
+    }
+
+    .dd-gate-out.read {
+      background: #e0f2f1;
+      border-left-color: var(--read);
+    }
+
+    .dd-gate-out.commit {
+      background: #e8f0fe;
+      border-left-color: var(--accent);
+    }
+
+    .dd-gate-out strong {
+      display: block;
+      margin-bottom: 0.25rem;
+    }
+
+    .lcp-block {
+      margin: 0.65rem 0;
+    }
+
+    .lcp-hyp {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.5rem 0.65rem;
+      margin-bottom: 0.45rem;
+      font-size: 0.8rem;
+      background: var(--bg);
+    }
+
+    .lcp-hyp-meta {
+      font-size: 0.72rem;
+      color: var(--muted);
+      margin-bottom: 0.25rem;
+    }
+
+    .lcp-hyp-en {
+      font-family: var(--mono);
+      margin-bottom: 0.35rem;
+      color: var(--text);
+    }
+
+    .lcp-char-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.15rem;
+      font-family: var(--mono);
+      font-size: 0.95rem;
+      letter-spacing: 0.08em;
+    }
+
+    .lcp-char-row span {
+      display: inline-block;
+      min-width: 1.1em;
+      text-align: center;
+      padding: 0.12rem 0.08rem;
+      border-radius: 3px;
+    }
+
+    .lcp-char-agree {
+      background: #c8e6c9;
+      color: #1b5e20;
+      font-weight: 600;
+      border: 1px solid #81c784;
+    }
+
+    .lcp-char-defer {
+      background: var(--muted-bg);
+      color: var(--muted);
+      border: 1px dashed var(--border);
+    }
+
+    .lcp-banner {
+      font-size: 0.85rem;
+      padding: 0.6rem 0.75rem;
+      border-radius: 6px;
+      background: #e0f2f1;
+      border: 1px solid #80cbc4;
+      margin-top: 0.5rem;
+    }
+
+    .lcp-banner strong {
+      color: #004d40;
+    }
+
+    .demo-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin: 1.5rem 0 0;
+      padding-bottom: 0.45rem;
+      border-bottom: 2px solid rgba(181, 157, 116, 0.45);
+      align-items: flex-end;
+    }
+
+    .demo-tabs button[role="tab"] {
+      font: inherit;
+      font-size: 0.88rem;
+      font-weight: 600;
+      padding: 0.5rem 1rem;
+      border: 1px solid rgba(181, 157, 116, 0.45);
+      border-radius: 12px 12px 0 0;
+      background: rgba(244, 239, 227, 0.92);
+      cursor: pointer;
+      color: var(--text);
+      margin-bottom: -2px;
+    }
+
+    .demo-tabs button[role="tab"]:hover {
+      border-color: #a8c7fa;
+      color: var(--accent);
+    }
+
+    .demo-tabs button[role="tab"][aria-selected="true"] {
+      background: var(--bg);
+      border-bottom-color: var(--bg);
+      color: var(--accent);
+      box-shadow: 0 2px 0 var(--bg);
+    }
+
+    .demo-tab-panel {
+      display: none;
+      padding-top: 1rem;
+    }
+
+    .demo-tab-panel.active {
+      display: block;
+    }
+
+    .model-callout {
+      font-size: 0.82rem;
+      line-height: 1.55;
+      padding: 0.55rem 0.75rem;
+      margin: 0 0 1rem;
+      border-radius: 14px;
+      border: 1px solid rgba(21, 61, 116, 0.18);
+      background: linear-gradient(135deg, rgba(221, 232, 248, 0.94), rgba(255, 255, 255, 0.82));
+    }
+
+    .model-callout strong {
+      color: #0b57d0;
+    }
+
+    .method-anim-block {
+      margin-bottom: 2.25rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid #eee;
+    }
+
+    .method-anim-block:last-child {
+      border-bottom: none;
+      margin-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .beam-explainer {
+      margin-top: 0.75rem;
+      padding: 0.75rem 1rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg);
+      font-size: 0.86rem;
+      line-height: 1.55;
+    }
+
+    .beam-explainer h4 {
+      margin: 0 0 0.5rem;
+      font-size: 0.92rem;
+      font-weight: 600;
+    }
+
+    .beam-table-wrap {
+      overflow-x: auto;
+      margin-top: 0.5rem;
+    }
+
+    .beam-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+    }
+
+    .beam-table th,
+    .beam-table td {
+      border: 1px solid var(--border);
+      padding: 0.4rem 0.55rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .beam-table th {
+      background: var(--muted-bg);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .section-lead {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.96rem;
+      max-width: 58rem;
+    }
+
+    .story-grid {
+      display: grid;
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+
+    @media (min-width: 920px) {
+      .story-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+    }
+
+    .story-card {
+      position: relative;
+      padding: 1.1rem 1.1rem 1rem;
+      border-radius: 20px;
+      border: 1px solid rgba(181, 157, 116, 0.45);
+      background: rgba(255, 255, 255, 0.82);
+      box-shadow: 0 10px 24px rgba(92, 66, 28, 0.05);
+    }
+
+    .story-card.main {
+      background: linear-gradient(180deg, rgba(221, 232, 248, 0.92), rgba(255, 255, 255, 0.84));
+    }
+
+    .story-card.support {
+      background: linear-gradient(180deg, rgba(220, 238, 234, 0.94), rgba(255, 255, 255, 0.84));
+    }
+
+    .story-card.pipeline {
+      background: linear-gradient(180deg, rgba(244, 221, 213, 0.95), rgba(255, 255, 255, 0.84));
+    }
+
+    .story-kicker {
+      display: inline-block;
+      margin: 0 0 0.55rem;
+      padding: 0.25rem 0.55rem;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      background: rgba(255, 255, 255, 0.65);
+      border: 1px solid rgba(181, 157, 116, 0.45);
+      color: var(--accent-strong);
+    }
+
+    .story-card h3 {
+      margin: 0 0 0.45rem;
+      font-size: 1.02rem;
+    }
+
+    .story-card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .story-card ul {
+      margin: 0.8rem 0 0;
+      padding-left: 1.05rem;
+      font-size: 0.88rem;
+    }
+
+    .story-card li + li {
+      margin-top: 0.45rem;
+    }
+
+    .method-lanes {
+      display: grid;
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+
+    @media (min-width: 900px) {
+      .method-lanes {
+        grid-template-columns: 1.1fr 0.9fr;
+      }
+    }
+
+    .lane-card {
+      border-radius: 22px;
+      padding: 1.15rem;
+      border: 1px solid rgba(181, 157, 116, 0.45);
+      background: rgba(255, 255, 255, 0.84);
+      box-shadow: 0 10px 24px rgba(92, 66, 28, 0.05);
+    }
+
+    .lane-card.main {
+      background: linear-gradient(180deg, rgba(221, 232, 248, 0.94), rgba(255, 255, 255, 0.84));
+    }
+
+    .lane-card.support {
+      background: linear-gradient(180deg, rgba(220, 238, 234, 0.96), rgba(255, 255, 255, 0.84));
+    }
+
+    .lane-label {
+      display: inline-block;
+      padding: 0.28rem 0.62rem;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.68);
+      border: 1px solid rgba(181, 157, 116, 0.45);
+      font-size: 0.76rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 700;
+      color: var(--accent-strong);
+    }
+
+    .lane-card h3 {
+      margin: 0.7rem 0 0.4rem;
+      font-size: 1.06rem;
+    }
+
+    .lane-card > p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .lane-steps {
+      display: grid;
+      gap: 0.7rem;
+      margin-top: 1rem;
+    }
+
+    .lane-step {
+      padding: 0.9rem;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.78);
+      border: 1px solid rgba(181, 157, 116, 0.38);
+    }
+
+    .lane-step .step-no {
+      display: inline-block;
+      width: 1.5rem;
+      height: 1.5rem;
+      line-height: 1.5rem;
+      text-align: center;
+      border-radius: 999px;
+      margin-right: 0.45rem;
+      background: rgba(140, 59, 42, 0.12);
+      color: var(--accent-strong);
+      font-weight: 700;
+      font-size: 0.78rem;
+    }
+
+    .lane-step strong {
+      font-size: 0.92rem;
+    }
+
+    .lane-step p {
+      margin: 0.4rem 0 0;
+      color: var(--muted);
+      font-size: 0.86rem;
+    }
+
+    .compare-grid {
+      display: grid;
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+
+    @media (min-width: 900px) {
+      .compare-grid {
+        grid-template-columns: 1.05fr 0.95fr;
+      }
+    }
+
+    .result-band {
+      padding: 1.1rem;
+      border-radius: 22px;
+      border: 1px solid rgba(181, 157, 116, 0.45);
+      background: rgba(255, 255, 255, 0.84);
+      box-shadow: 0 10px 24px rgba(92, 66, 28, 0.05);
+    }
+
+    .result-band.main {
+      background: linear-gradient(180deg, rgba(221, 232, 248, 0.94), rgba(255, 255, 255, 0.84));
+    }
+
+    .result-band.support {
+      background: linear-gradient(180deg, rgba(220, 238, 234, 0.96), rgba(255, 255, 255, 0.84));
+    }
+
+    .result-band h3 {
+      margin: 0.65rem 0 0.35rem;
+      font-size: 1.05rem;
+    }
+
+    .result-band p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.89rem;
+    }
+
+    .band-topline {
+      display: inline-block;
+      padding: 0.3rem 0.62rem;
+      border-radius: 999px;
+      border: 1px solid rgba(181, 157, 116, 0.45);
+      background: rgba(255, 255, 255, 0.7);
+      font-size: 0.75rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+
+    .band-stats {
+      display: grid;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+
+    @media (min-width: 520px) {
+      .band-stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    .band-stat {
+      padding: 0.8rem 0.85rem;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.8);
+      border: 1px solid rgba(181, 157, 116, 0.38);
+    }
+
+    .band-stat small {
+      display: block;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-size: 0.72rem;
+      font-weight: 700;
+    }
+
+    .band-stat strong {
+      display: block;
+      margin-top: 0.25rem;
+      font-size: 1.25rem;
+      line-height: 1.1;
+      color: var(--text);
+    }
+
+    .status-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+
+    .status-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.32rem 0.6rem;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      border: 1px solid rgba(181, 157, 116, 0.45);
+      background: rgba(255, 255, 255, 0.72);
+      color: var(--text);
+    }
+
+    .status-chip.live {
+      border-color: rgba(21, 61, 116, 0.2);
+      background: rgba(221, 232, 248, 0.9);
+    }
+
+    .status-chip.pending {
+      border-color: rgba(140, 59, 42, 0.18);
+      background: rgba(244, 221, 213, 0.92);
+    }
+
+    .comparison-note {
+      margin-top: 0.9rem;
+      padding: 0.85rem 0.9rem;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px dashed rgba(181, 157, 116, 0.7);
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    .beam-table .zh-mono {
+      font-family: var(--mono);
+      letter-spacing: 0.06em;
+    }
+
+    .beam-row-best {
+      background: #e8f5e9;
+    }
+
+    .beam-row-best td:first-child {
+      font-weight: 700;
+    }
+
+    .beam-score {
+      font-family: var(--mono);
+      text-align: right;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <p class="course">CMU 11-785 · Introduction to Deep Learning · Final project</p>
+      <div class="hero-grid">
+        <div class="hero-copy">
+          <p class="eyebrow">Early commitment in simultaneous machine translation</p>
+          <h1>Selective Test-Time Reasoning for Streaming Speech Translation</h1>
+          <p class="subtitle">
+            This page is organized around one clean story: <strong>main evidence</strong> on a fixed strong translator
+            (<code>Qwen3-30B-A3B-Instruct-2507</code> + Future / literal LCP), and <strong>supporting evidence</strong>
+            on a fixed small translator (<code>facebook/nllb-200-distilled-600M</code> + DD / JS gating).
+            Both tracks target the same failure mode: <strong>premature target commitment</strong> in streaming EN→ZH translation.
+          </p>
+          <div class="hero-badges">
+            <span class="hero-badge"><strong>Main line</strong> same-translator fairness</span>
+            <span class="hero-badge"><strong>Supporting line</strong> small-model policy study</span>
+            <span class="hero-badge"><strong>Speech view</strong> Whisper cascaded into the same SimulEval stack</span>
+          </div>
+        </div>
+        <aside class="hero-card">
+          <h3>What this demo should make clear</h3>
+          <p>The page is no longer a flat list of methods. It now separates the project into claims, pipelines, and data so the audience can immediately see what is being compared fairly.</p>
+          <ul>
+            <li><strong>Main claim:</strong> Future-aware consensus can improve commit safety without changing the translator.</li>
+            <li><strong>Supporting claim:</strong> The same two future-aware ideas also help on a smaller NLLB backbone, not just on Qwen.</li>
+            <li><strong>Toy walkthroughs below:</strong> all animations use the same stream with wait-<span id="kVal">3</span> on <code>The river was named after his cousin Maria</code> → <code>这条河以他堂兄玛丽亚的名字命名。</code></li>
+          </ul>
+        </aside>
+      </div>
+      <div class="hero-metrics">
+        <article class="metric-hero main">
+          <p class="metric-label">Main Result</p>
+          <p class="metric-value"><strong>+2.35 BLEU</strong> for Future LCP</p>
+          <p class="metric-note"><code>Qwen30B direct k=5</code> 21.726 BLEU → <code>Future LCP K=4</code> 24.072 BLEU on <code>wmt500</code>, with only <strong>+0.28 AL</strong>.</p>
+        </article>
+        <article class="metric-hero support">
+          <p class="metric-label">Supporting Result</p>
+          <p class="metric-value"><strong>NLLB also improves</strong></p>
+          <p class="metric-note">On <code>wmt500</code>, <code>NLLB wait-k=5</code> 12.821 BLEU → <code>DD + JS</code> 14.951 BLEU and <code>literal LCP</code> 14.472 BLEU. The LCP gain comes with almost no extra AL.</p>
+        </article>
+        <article class="metric-hero stream">
+          <p class="metric-label">Shared Streaming Setup</p>
+          <p class="metric-value">READ / WRITE with irreversible commits</p>
+          <p class="metric-note">The key question is not just <em>when</em> to read more, but also <em>what prefix is safe enough to commit right now</em>.</p>
+        </article>
+      </div>
+    </header>
+
+    <h2>Project Story</h2>
+    <p class="section-lead">
+      The project is easiest to understand if you read it as two complementary answers to the same problem.
+      <strong>DD + JS</strong> is a <em>when to wait</em> policy. <strong>Future / literal LCP</strong> is a <em>what is safe to write</em> policy.
+      Together they frame premature commitment as a decision problem instead of a fixed wait-<em>k</em> schedule.
+    </p>
+    <div class="story-grid">
+      <article class="story-card main">
+        <span class="story-kicker">Main Line</span>
+        <h3>Qwen direct vs Future / literal LCP</h3>
+        <p>Keep the translator fixed at <code>Qwen3-30B-A3B-Instruct-2507</code>, then change only the commit rule.</p>
+        <ul>
+          <li><strong>Fair comparison:</strong> same translator, same <code>wmt500</code> slice, same wait-<em>k</em> framing.</li>
+          <li><strong>New method:</strong> sample English futures with <code>Qwen3-4B-Base</code>, translate each one, then commit only the Chinese literal LCP that survives quorum.</li>
+          <li><strong>Interpretation:</strong> this directly targets safe-prefix commitment.</li>
+        </ul>
+      </article>
+      <article class="story-card support">
+        <span class="story-kicker">Supporting Line</span>
+        <h3>NLLB wait-k vs DD / JS vs literal LCP</h3>
+        <p>Keep the translator fixed at <code>facebook/nllb-200-distilled-600M</code>, then ask whether the same future-aware ideas still help on a smaller backbone.</p>
+        <ul>
+          <li><strong>Future LM only:</strong> <code>Qwen3-4B-Base</code> samples futures from the observed prefix only, never oracle source peeking.</li>
+          <li><strong>Policy ideas:</strong> DD + JS decides <em>when to wait</em>; literal LCP decides <em>what is safe to commit</em>.</li>
+          <li><strong>Interpretation:</strong> this is supporting evidence that the future-aware idea is not only a big-model trick.</li>
+        </ul>
+      </article>
+      <article class="story-card pipeline">
+        <span class="story-kicker">Shared Pipeline</span>
+        <h3>Speech still fits the same story</h3>
+        <p>The speech demo is intentionally cascaded, not a separate research claim.</p>
+        <ul>
+          <li><strong>Audio front-end:</strong> <code>openai/whisper-small</code> produces streaming English text.</li>
+          <li><strong>Same back-end agents:</strong> after ASR, the exact same DD and Future LCP logic applies.</li>
+          <li><strong>Why this matters:</strong> it keeps the final project aligned with streaming speech translation without diluting the main MT contribution.</li>
+        </ul>
+      </article>
+    </div>
+
+    <h2>Method Map</h2>
+    <p class="section-lead">
+      The four methods below are grouped by the translator they actually evaluate. This makes the fairness story much clearer than showing everything as one long baseline list.
+    </p>
+    <div class="method-lanes">
+      <section class="lane-card main">
+        <span class="lane-label">Main evidence · fixed Qwen translator</span>
+        <h3>What changes in the Qwen line</h3>
+        <p>The translator stays fixed. The only difference is whether you commit from one direct hypothesis or from a future-aware consensus over multiple hypotheses.</p>
+        <div class="lane-steps">
+          <div class="lane-step">
+            <strong><span class="step-no">1</span>Qwen direct</strong>
+            <p><code>Qwen3-30B-A3B-Instruct-2507</code> translates the visible prefix directly. This is the fairness baseline for Method 2.</p>
+          </div>
+          <div class="lane-step">
+            <strong><span class="step-no">2</span>Future / literal LCP</strong>
+            <p><code>Qwen3-4B-Base</code> samples English futures, the 30B model translates each future-conditioned string, and only the Chinese literal LCP beyond the committed prefix is allowed to write.</p>
+          </div>
+        </div>
+      </section>
+      <section class="lane-card support">
+        <span class="lane-label">Supporting evidence · fixed NLLB translator</span>
+        <h3>What changes in the NLLB line</h3>
+        <p>The translator stays fixed at NLLB. The methods differ in either search strength or in how conservative the read / commit policy is when the future is uncertain.</p>
+        <div class="lane-steps">
+          <div class="lane-step">
+            <strong><span class="step-no">1</span>Baseline 1</strong>
+            <p>Strict wait-<em>k</em> + greedy <code>facebook/nllb-200-distilled-600M</code>. No DD, no future-aware veto, no multi-hypothesis consensus.</p>
+          </div>
+          <div class="lane-step">
+            <strong><span class="step-no">2</span>Baseline 2</strong>
+            <p>Same wait-<em>k</em> policy, but the decoder uses NLLB beam search. This improves search, not commit safety.</p>
+          </div>
+          <div class="lane-step">
+            <strong><span class="step-no">3</span>Method 1 · DD + JS</strong>
+            <p><code>Qwen3-4B-Base</code> samples English futures, each future induces an NLLB next-token distribution, and average pairwise Jensen-Shannon divergence decides whether to READ more or allow the commit.</p>
+          </div>
+          <div class="lane-step">
+            <strong><span class="step-no">4</span>Method 2 · literal LCP</strong>
+            <p>NLLB generates multiple candidate continuations, and only the literal Chinese prefix that survives cross-candidate agreement is committed. This is the small-model LCP variant.</p>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <h2>Data Comparison</h2>
+    <p class="section-lead">
+      These tables are separated by claim. The <strong>main table</strong> is the fair headline comparison for the final report. The <strong>support table</strong> now uses the same <code>wmt500</code> slice for the small-model study.
+    </p>
+    <div class="compare-grid">
+      <section class="result-band main">
+        <span class="band-topline">Main Table · <code>wmt500</code> · same translator</span>
+        <h3>Qwen30B direct vs Future / literal LCP</h3>
+        <p>This is the clearest evidence for your final presentation because the translator stays fixed and only the commit rule changes.</p>
+        <div class="band-stats">
+          <div class="band-stat">
+            <small>Quality gain</small>
+            <strong>+2.35 BLEU</strong>
+          </div>
+          <div class="band-stat">
+            <small>Latency cost</small>
+            <strong>+0.28 AL</strong>
+          </div>
+        </div>
+        <div class="results-table-wrap">
+          <table class="results-table">
+            <thead>
+              <tr>
+                <th>Method</th>
+                <th>BLEU ↑</th>
+                <th>AL ↓</th>
+                <th>LAAL ↓</th>
+                <th>Reading</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Qwen direct · wait-<em>k</em>=5 · <code>K=0</code></td>
+                <td style="font-family:var(--mono);">21.726</td>
+                <td style="font-family:var(--mono);">8.400</td>
+                <td style="font-family:var(--mono);">8.662</td>
+                <td>Strong baseline: one 30B path, no future consensus.</td>
+              </tr>
+              <tr>
+                <td>Qwen DD + JS · wait-<em>k</em>=5 · <code>K=4</code></td>
+                <td style="font-family:var(--mono);">22.266</td>
+                <td style="font-family:var(--mono);">9.170</td>
+                <td style="font-family:var(--mono);">9.387</td>
+                <td>Future disagreement decides whether the direct Qwen commit is safe enough to allow.</td>
+              </tr>
+              <tr style="background:rgba(221,232,248,0.45);">
+                <td>Future / literal LCP · wait-<em>k</em>=5 · <code>K=4</code></td>
+                <td style="font-family:var(--mono);font-weight:700;">24.072</td>
+                <td style="font-family:var(--mono);">8.678</td>
+                <td style="font-family:var(--mono);">8.897</td>
+                <td>Commit only the quorum literal prefix that survives future disagreement.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="status-row">
+          <span class="status-chip live">rerun completed</span>
+          <span class="status-chip live">same-translator fairness comparison</span>
+        </div>
+      </section>
+
+      <section class="result-band support">
+        <span class="band-topline">Support Table · <code>wmt500</code> · fixed NLLB</span>
+        <h3>Do the same ideas help a small translator too?</h3>
+        <p>This table is supporting evidence, not the headline fairness comparison. It shows the same <code>wmt500</code> slice under a smaller fixed translator.</p>
+        <div class="band-stats">
+          <div class="band-stat">
+            <small>Best gain on NLLB</small>
+            <strong>+2.13 BLEU</strong>
+          </div>
+          <div class="band-stat">
+            <small>Lowest-cost gain</small>
+            <strong>LCP: +1.65 BLEU, +0.05 AL</strong>
+          </div>
+        </div>
+        <div class="results-table-wrap">
+          <table class="results-table">
+            <thead>
+              <tr>
+                <th>Method</th>
+                <th>BLEU ↑</th>
+                <th>AL ↓</th>
+                <th>LAAL ↓</th>
+                <th>Reading</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>NLLB baseline · wait-<em>k</em>=5 · beam=1</td>
+                <td style="font-family:var(--mono);">12.821</td>
+                <td style="font-family:var(--mono);">8.335</td>
+                <td style="font-family:var(--mono);">8.365</td>
+                <td>Strict wait-<em>k</em> baseline with greedy decoding.</td>
+              </tr>
+              <tr>
+                <td>NLLB baseline · wait-<em>k</em>=5 · beam=8</td>
+                <td style="font-family:var(--mono);">18.311</td>
+                <td style="font-family:var(--mono);">8.393</td>
+                <td style="font-family:var(--mono);">8.517</td>
+                <td>Search-only compute baseline: stronger decoding, no future-aware safety rule.</td>
+              </tr>
+              <tr>
+                <td>DD + JS · τ=0.05</td>
+                <td style="font-family:var(--mono);font-weight:700;">14.951</td>
+                <td style="font-family:var(--mono);">11.916</td>
+                <td style="font-family:var(--mono);">11.931</td>
+                <td>Best quality among the future-aware NLLB runs, but noticeably slower.</td>
+              </tr>
+              <tr style="background:rgba(220,238,234,0.55);">
+                <td>literal LCP · wait-<em>k</em>=5 · <code>K=4</code></td>
+                <td style="font-family:var(--mono);">14.472</td>
+                <td style="font-family:var(--mono);">8.384</td>
+                <td style="font-family:var(--mono);">8.449</td>
+                <td>Quality gain with almost no extra latency over the greedy baseline.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="status-row">
+          <span class="status-chip live">wmt500 rerun completed</span>
+          <span class="status-chip live">small-backbone comparison updated</span>
+        </div>
+      </section>
+    </div>
+    <div class="comparison-note">
+      <strong>Important fairness note:</strong> do not present the NLLB and Qwen tables as one direct BLEU ranking.
+      The fair headline claim is inside the Qwen table. The NLLB table is there to show that the future-aware idea also helps on a smaller backbone.
+      Also, the Qwen line uses a <strong>literal Chinese LCP</strong> over future-conditioned Qwen strings, while the NLLB line is the corresponding small-model variant inside <code>sttr_enzh_agent.py</code>. The point of the support table is not absolute BLEU parity, but showing that the same future-aware intuition still transfers across backbones.
+    </div>
+
+    <h2>Cascaded speech → English text → same SimulEval stack</h2>
+    <p class="note">
+      Fulfills the <strong>streaming speech translation</strong> narrative as an <strong>ASR front-end + your existing pipeline</strong>. After ASR, every method above applies unchanged: the agent still sees an <strong>incremental English text</strong> stream (SimulEval READ/WRITE). Default ASR: <strong>openai/whisper-small</strong> via Hugging Face <code>transformers</code>. Chinese references use the same space-separated format as WMT19 for fair BLEU (<code>prepare_covost_asr_texts.py --target-format simul</code>).
+    </p>
+    <svg class="diagram-wide" viewBox="0 0 720 102" xmlns="http://www.w3.org/2000/svg" aria-label="Cascaded speech to SimulEval pipeline">
+      <text x="360" y="15" text-anchor="middle" font-size="10" fill="#5c6576" font-family="ui-sans-serif,system-ui,sans-serif">Cascaded streaming speech translation — not end-to-end neural audio→ZH</text>
+      <rect x="6" y="24" width="86" height="58" rx="4" fill="#fce4ec" stroke="#880e4f" stroke-width="1.1"/>
+      <text x="49" y="50" text-anchor="middle" font-size="9" font-family="ui-sans-serif,sans-serif">CoVoST EN</text>
+      <text x="49" y="66" text-anchor="middle" font-size="7" fill="#5c6576" font-family="ui-sans-serif,sans-serif">speech audio</text>
+      <line x1="92" y1="53" x2="114" y2="53" stroke="#1a1d24" stroke-width="1.1"/>
+      <polygon points="114,53 108,49 108,57" fill="#1a1d24"/>
+      <rect x="118" y="24" width="108" height="58" rx="4" fill="#fff3e0" stroke="#e65100" stroke-width="1.1"/>
+      <text x="172" y="48" text-anchor="middle" font-size="8" font-family="ui-sans-serif,sans-serif">Whisper ASR</text>
+      <text x="172" y="64" text-anchor="middle" font-size="7" fill="#5c6576" font-family="ui-sans-serif,sans-serif">openai/whisper-small</text>
+      <line x1="226" y1="53" x2="248" y2="53" stroke="#1a1d24" stroke-width="1.1"/>
+      <polygon points="248,53 242,49 242,57" fill="#1a1d24"/>
+      <rect x="252" y="24" width="100" height="58" rx="4" fill="#f5f5f5" stroke="#1a1d24" stroke-width="1.1"/>
+      <text x="302" y="48" text-anchor="middle" font-size="8" font-family="ui-sans-serif,sans-serif">EN text file</text>
+      <text x="302" y="64" text-anchor="middle" font-size="7" fill="#5c6576" font-family="ui-sans-serif,sans-serif">*_source_asr.txt</text>
+      <line x1="352" y1="53" x2="374" y2="53" stroke="#1a1d24" stroke-width="1.1"/>
+      <polygon points="374,53 368,49 368,57" fill="#1a1d24"/>
+      <rect x="378" y="24" width="148" height="58" rx="4" fill="#fff7ed" stroke="#c2410c" stroke-width="1.1"/>
+      <text x="452" y="46" text-anchor="middle" font-size="8" font-family="ui-sans-serif,sans-serif">Your SimulEval agent</text>
+      <text x="452" y="60" text-anchor="middle" font-size="7" fill="#9a3412" font-family="ui-sans-serif,sans-serif">sttr_enzh_agent · semantic_lcp_agent</text>
+      <text x="452" y="72" text-anchor="middle" font-size="6.5" fill="#5c6576" font-family="ui-sans-serif,sans-serif">Baselines / DD / Future LCP</text>
+      <line x1="526" y1="53" x2="548" y2="53" stroke="#1a1d24" stroke-width="1.1"/>
+      <polygon points="548,53 542,49 542,57" fill="#1a1d24"/>
+      <rect x="552" y="24" width="162" height="58" rx="4" fill="#e8f5e9" stroke="#2e7d32" stroke-width="1.1"/>
+      <text x="633" y="50" text-anchor="middle" font-size="9" font-family="ui-sans-serif,sans-serif">Chinese output + metrics</text>
+      <text x="633" y="66" text-anchor="middle" font-size="7" fill="#5c6576" font-family="ui-sans-serif,sans-serif">BLEU · AL · LAAL (SimulEval)</text>
+      <text x="360" y="96" text-anchor="middle" font-size="7" fill="#5c6576" font-family="ui-sans-serif,sans-serif">prepare_covost_asr_texts.py → run_covost_cascaded_nllb.sbatch (or point simuleval --source at the ASR text file)</text>
+    </svg>
+
+    <h2>Interactive Pipelines</h2>
+    <p class="note">These tabs are the demo layer for the same story above: start with the baselines, then see how DD changes <em>when</em> the system waits, and how Future LCP changes <em>what</em> it is willing to write. Each tab has its own <strong>Previous / Next / Reset / Play</strong> controls.</p>
+
+    <div class="demo-tabs" role="tablist" aria-label="Method walkthrough tabs">
+      <button type="button" role="tab" id="tab-baseline" aria-selected="true" aria-controls="panel-baseline">Baselines (1 &amp; 2)</button>
+      <button type="button" role="tab" id="tab-dd" aria-selected="false" aria-controls="panel-dd">Method 1: DD + JS</button>
+      <button type="button" role="tab" id="tab-flcp" aria-selected="false" aria-controls="panel-flcp">Method 2: Future LCP (literal)</button>
+      <button type="button" role="tab" id="tab-speech" aria-selected="false" aria-controls="panel-speech">Cascaded ST (Whisper → text)</button>
+    </div>
+
+    <div id="panel-baseline" class="demo-tab-panel active" role="tabpanel" aria-labelledby="tab-baseline">
+      <div class="method-anim-block">
+        <h3 style="margin:0 0 0.5rem;font-size:1.05rem;">Baseline 1 — Wait-<em>k</em> + greedy <code>facebook/nllb-200-distilled-600M</code></h3>
+        <div class="model-callout">
+          <strong>Models / stack:</strong> <code>facebook/nllb-200-distilled-600M</code> only, <strong>beam_size = 1</strong> (greedy). <strong>No</strong> <code>Qwen3-4B-Base</code>, <strong>no</strong> <code>Qwen3-30B-Instruct</code>, <strong>no</strong> <code>dd_gate.py</code>. SimulEval policy: wait-<em>k</em> with STTR “extras” disabled via huge <code>--uncertainty-threshold</code> and <code>--max-extra-reads 0</code>.
+        </div>
+        <div class="panel" id="b1-demoPanel">
+          <div class="step-bar">
+            <div class="step-counter" id="b1-stepCounter">Step <strong>0</strong> / <strong>0</strong></div>
+            <div class="controls">
+              <button type="button" id="b1BtnPrev" disabled>Previous</button>
+              <button type="button" class="primary" id="b1BtnNext">Next step</button>
+              <button type="button" id="b1BtnReset">Reset</button>
+              <button type="button" id="b1BtnPlay" title="Auto-advance every 1.2s">Play</button>
+            </div>
+          </div>
+          <div class="grid-4">
+            <div class="state-card" id="b1-cardSrc">
+              <h3>Source buffer (English words)</h3>
+              <div class="chips" id="b1-srcChips"></div>
+              <p class="formula" id="b1-srcFormula">|src| = 0</p>
+            </div>
+            <div class="state-card" id="b1-cardPolicy">
+              <h3>Policy decision</h3>
+              <div id="b1-policyBadge"></div>
+              <p class="detail-line" id="b1-policyDetail"></p>
+              <p class="formula" id="b1-policyFormula"></p>
+            </div>
+            <div class="state-card" id="b1-cardDecode">
+              <h3>Decoder (NLLB)</h3>
+              <p class="detail-line" id="b1-decodeDetail">…</p>
+              <p class="formula" id="b1-decodeFormula"></p>
+            </div>
+            <div class="state-card" id="b1-cardTgt">
+              <h3>Committed ZH</h3>
+              <div class="zh-line" id="b1-zhLine"></div>
+              <p class="formula" id="b1-tgtFormula">|tgt| = 0</p>
+            </div>
+          </div>
+          <p class="note" id="b1-stepNote" style="margin-top:1rem;"></p>
+          <div class="log" id="b1-eventLog" aria-live="polite"></div>
+        </div>
+      </div>
+
+      <div class="method-anim-block">
+        <h3 style="margin:0 0 0.5rem;font-size:1.05rem;">Baseline 2 — Wait-<em>k</em> + <code>facebook/nllb-200-distilled-600M</code> beam search</h3>
+        <div class="model-callout">
+          <strong>Models / stack:</strong> same agent as Baseline&nbsp;1, but <strong>beam_size &gt; 1</strong> (e.g. 8): decoding keeps multiple NLLB hypotheses and commits the next Chinese unit from the <strong>best beam</strong>. This demo uses the <strong>same</strong> READ/WRITE toy steps as Baseline&nbsp;1—only the decode captions differ. In real runs, <code>--uncertainty-threshold</code> is separate: a <strong>huge</strong> value (plus <code>--max-extra-reads 0</code>) turns off STTR read-more; a <strong>finite</strong> value lets <code>_translate_with_gate</code> issue extra READs— that is <strong>not</strong> a per-step “beam gate” in SimulEval.
+        </div>
+
+        <div class="beam-explainer">
+          <h4>What <code>beam_size = 8</code> is doing (not “top‑8 full sentences”)</h4>
+          <p style="margin:0 0 0.5rem;">
+            Inside NLLB decoding, <strong>beam search</strong> keeps the <strong>8 best <em>partial</em> target hypotheses</strong> (equal decode depth at a given step), ranked by cumulative score / log‑prob. Each step: extend each surviving beam with candidate next subwords (or chars), rescore, then <strong>prune back to 8</strong>. Greedy (<code>beam_size = 1</code>) is the case where only one partial hypothesis survives.
+            This panel is <strong>illustrative</strong>—scores are fake; real behaviour is in HF <code>generate</code> / your NLLB config.
+          </p>
+          <p class="note" style="margin:0;">
+            <strong>Toy snapshot:</strong> English prefix fixed as <code style="font-size:0.82em;">The river was</code> (same sentence as the walkthrough). Suppose the decoder has already produced <span class="zh-mono">这条河</span>; the table shows <strong>8 rival partial strings after one more symbol</strong> (each row = one surviving beam). <strong>Less negative</strong> toy score = better. The <strong>green row</strong> wins; on a WRITE step the agent commits that winning extension’s new piece (here the character <strong>以</strong>, matching 这条河<strong>以</strong>他堂兄…).
+          </p>
+          <div class="beam-table-wrap">
+            <table class="beam-table" aria-label="Toy beam hypotheses">
+              <thead>
+                <tr>
+                  <th>Beam</th>
+                  <th>Partial Chinese hypothesis (toy)</th>
+                  <th>Toy cum. score<br /><span style="font-weight:400;font-size:0.72rem;">(higher = better)</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr class="beam-row-best">
+                  <td>1</td>
+                  <td class="zh-mono">这条河<strong>以</strong></td>
+                  <td class="beam-score">−1.15</td>
+                </tr>
+                <tr>
+                  <td>2</td>
+                  <td class="zh-mono">这条河<strong>流</strong></td>
+                  <td class="beam-score">−2.03</td>
+                </tr>
+                <tr>
+                  <td>3</td>
+                  <td class="zh-mono">这条河<strong>被</strong></td>
+                  <td class="beam-score">−2.41</td>
+                </tr>
+                <tr>
+                  <td>4</td>
+                  <td class="zh-mono">这条河<strong>在</strong></td>
+                  <td class="beam-score">−2.88</td>
+                </tr>
+                <tr>
+                  <td>5</td>
+                  <td class="zh-mono">这条河<strong>叫</strong></td>
+                  <td class="beam-score">−3.12</td>
+                </tr>
+                <tr>
+                  <td>6</td>
+                  <td class="zh-mono">这条河<strong>是</strong></td>
+                  <td class="beam-score">−3.56</td>
+                </tr>
+                <tr>
+                  <td>7</td>
+                  <td class="zh-mono">这条河<strong>将</strong></td>
+                  <td class="beam-score">−3.90</td>
+                </tr>
+                <tr>
+                  <td>8</td>
+                  <td class="zh-mono">这条河<strong>从</strong></td>
+                  <td class="beam-score">−4.22</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="note" style="margin:0.5rem 0 0;">
+            With <code>beam_size = 1</code>, only the single best greedy extension survives each step. With <code>beam_size = 8</code>, up to <strong>eight</strong> partial hypotheses stay alive between prune steps; the policy still emits <strong>one</strong> next target unit per SimulEval WRITE from the current best beam (implementation detail: full hypothesis vs one char depends on tokenizer—this demo uses one Chinese character for clarity).
+          </p>
+
+          <div style="margin-top:0.85rem;padding:0.75rem 1rem;border-radius:6px;border:2px solid #0b57d0;background:#e8f0fe;font-size:0.88rem;line-height:1.6;">
+            <strong style="color:#0b57d0;display:block;margin-bottom:0.4rem;">🔑 Key caching rule (applies to both Baseline 1 &amp; 2)</strong>
+            <strong>As long as the source prefix has not changed, every consecutive WRITE takes the next character directly from the cached beam-search result — beam search is NOT re-run.</strong>
+            The beam search only re-runs when a new READ arrives and the source prefix grows.
+            <br /><br />
+            In code (<code>sttr_enzh_agent.py → _translate_with_gate</code>):
+            <ul style="margin:0.35rem 0 0 1.1rem;padding:0;">
+              <li>Cache key = <code>(source_text, source_finished)</code></li>
+              <li><strong>Cache hit</strong> (source unchanged) → return <code>_current_translation[tgt_len]</code> directly, no NLLB call</li>
+              <li><strong>Cache miss</strong> (new word arrived) → re-run <code>_draft_with_uncertainty</code> → full beam decode → store new <code>_current_translation</code></li>
+            </ul>
+            <br />
+            <strong>Practical consequence:</strong> beam search is called roughly <em>once per READ</em>, not once per WRITE.
+            A sentence with 8 source words and wait-k = 3 typically triggers beam search ≈ 5–8 times (one per new word), while WRITE steps just index into the cached sequence.
+          </div>
+        </div>
+
+        <div class="panel" id="b2-demoPanel">
+          <div class="step-bar">
+            <div class="step-counter" id="b2-stepCounter">Step <strong>0</strong> / <strong>0</strong></div>
+            <div class="controls">
+              <button type="button" id="b2BtnPrev" disabled>Previous</button>
+              <button type="button" class="primary" id="b2BtnNext">Next step</button>
+              <button type="button" id="b2BtnReset">Reset</button>
+              <button type="button" id="b2BtnPlay" title="Auto-advance every 1.2s">Play</button>
+            </div>
+          </div>
+          <div class="grid-4">
+            <div class="state-card" id="b2-cardSrc">
+              <h3>Source buffer (English words)</h3>
+              <div class="chips" id="b2-srcChips"></div>
+              <p class="formula" id="b2-srcFormula">|src| = 0</p>
+            </div>
+            <div class="state-card" id="b2-cardPolicy">
+              <h3>Policy decision</h3>
+              <div id="b2-policyBadge"></div>
+              <p class="detail-line" id="b2-policyDetail"></p>
+              <p class="formula" id="b2-policyFormula"></p>
+            </div>
+            <div class="state-card" id="b2-cardDecode">
+              <h3>Decoder (NLLB beam)</h3>
+              <p class="detail-line" id="b2-decodeDetail">…</p>
+              <p class="formula" id="b2-decodeFormula"></p>
+            </div>
+            <div class="state-card" id="b2-cardTgt">
+              <h3>Committed ZH</h3>
+              <div class="zh-line" id="b2-zhLine"></div>
+              <p class="formula" id="b2-tgtFormula">|tgt| = 0</p>
+            </div>
+          </div>
+          <p class="note" id="b2-stepNote" style="margin-top:1rem;"></p>
+          <div class="log" id="b2-eventLog" aria-live="polite"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="panel-dd" class="demo-tab-panel" role="tabpanel" aria-labelledby="tab-dd" hidden>
+      <div class="model-callout">
+        <strong>Method 1 — DD + JS:</strong> Causal LM <strong>Qwen3-4B-Base</strong> (<code>--dd-future-lm</code>) proposes <em>K</em> English continuations. For each future, <strong>facebook/nllb-200-distilled-600M</strong> yields next Chinese token distributions (averaged over <code>--dd-steps</code> in code). Pairwise <strong>Jensen–Shannon</strong> averaged ⇒ DD score; if <code>&gt; --dd-tau</code> ⇒ <strong>READ</strong>. Implemented in <code>agents/dd_gate.py</code>, wired from <code>agents/sttr_enzh_agent.py</code>.
+      </div>
+      <div class="panel dd-walkthrough" id="ddwPanel">
+        <div class="step-bar">
+          <div class="step-counter" id="ddw-stepCounter">Step <strong>0</strong> / <strong>0</strong></div>
+          <div class="controls">
+            <button type="button" id="ddwBtnPrev" disabled>Previous</button>
+            <button type="button" class="primary" id="ddwBtnNext">Next</button>
+            <button type="button" id="ddwBtnReset">Reset</button>
+            <button type="button" id="ddwBtnPlay">Play</button>
+          </div>
+        </div>
+        <h3 class="dd-step-title" id="ddwStepTitle"></h3>
+        <p class="dd-narrative" id="ddwNarrative"></p>
+        <div id="ddwVisual"></div>
+        <div class="log" id="ddwLog" aria-live="polite" style="margin-top:1rem;"></div>
+      </div>
+    </div>
+
+    <div id="panel-flcp" class="demo-tab-panel" role="tabpanel" aria-labelledby="tab-flcp" hidden>
+      <div class="model-callout">
+        <strong>Method 2 — Future / literal LCP:</strong> <strong>Qwen3-4B-Base</strong> (<code>--future-lm-path</code>) samples <em>K</em> English futures. <strong>Qwen3-30B-Instruct</strong> serves one Chinese hypothesis per future through <strong>vLLM</strong> (<code>--vllm-api-base</code>, e.g. OpenAI-compatible <code>http://localhost:8100/v1</code>). Python quorum code extends only the longest shared Chinese prefix. <strong>No NLLB</strong> in this track. Script: <code>agents/semantic_lcp_agent.py</code>.
+      </div>
+      <p class="note">Toy steps below mirror the real pipeline names; numbers are illustrative.</p>
+      <div class="panel dd-walkthrough" id="flcpPanel">
+        <div class="step-bar">
+          <div class="step-counter" id="flcp-stepCounter">Step <strong>0</strong> / <strong>0</strong></div>
+          <div class="controls">
+            <button type="button" id="flcpBtnPrev" disabled>Previous</button>
+            <button type="button" class="primary" id="flcpBtnNext">Next</button>
+            <button type="button" id="flcpBtnReset">Reset</button>
+            <button type="button" id="flcpBtnPlay">Play</button>
+          </div>
+        </div>
+        <h3 class="dd-step-title" id="flcpStepTitle"></h3>
+        <p class="dd-narrative" id="flcpNarrative"></p>
+        <div id="flcpVisual"></div>
+      </div>
+    </div>
+
+    <div id="panel-speech" class="demo-tab-panel" role="tabpanel" aria-labelledby="tab-speech" hidden>
+      <div class="model-callout">
+        <strong>Cascaded streaming speech translation:</strong> <strong>CoVoST EN→ZH</strong> (HF <code>AudioLLMs/covost2_en_zh_test</code>) → <strong>openai/whisper-small</strong> (ASR) → <code>data/covost_enzh/&lt;prefix&gt;_source_asr.txt</code> + <code>&lt;prefix&gt;_target_zh.txt</code> → <strong>same</strong> <code>simuleval</code> invocation as text (e.g. <code>sttr_enzh_agent.py</code> for NLLB / DD, or <code>semantic_lcp_agent.py</code> for Method&nbsp;2). Not an end-to-end audio→ZH model; total latency includes ASR plus SimulEval AL/LAAL.
+      </div>
+      <div class="panel dd-walkthrough" id="spPanel">
+        <div class="step-bar">
+          <div class="step-counter" id="sp-stepCounter">Step <strong>0</strong> / <strong>0</strong></div>
+          <div class="controls">
+            <button type="button" id="spBtnPrev" disabled>Previous</button>
+            <button type="button" class="primary" id="spBtnNext">Next</button>
+            <button type="button" id="spBtnReset">Reset</button>
+            <button type="button" id="spBtnPlay">Play</button>
+          </div>
+        </div>
+        <h3 class="dd-step-title" id="spStepTitle"></h3>
+        <p class="dd-narrative" id="spNarrative"></p>
+        <div id="spVisual"></div>
+        <div class="log" id="spLog" aria-live="polite" style="margin-top:1rem;"></div>
+      </div>
+    </div>
+
+    <h2>Pipeline Diagrams</h2>
+    <p class="note">All four <strong>text-side</strong> methods use SimulEval’s READ/WRITE loop. With speech, prepend <strong>Whisper</strong> as in the cascaded figure above. NLLB tracks (<code>sttr_enzh_agent.py</code>) cover Baselines 1–2 and Method 1 (DD). Method 2 (Future / literal LCP) is <code>semantic_lcp_agent.py</code> with <strong>Qwen3-4B-Base</strong> + <strong>Qwen3-30B-Instruct</strong> (vLLM), no NLLB.</p>
+
+    <h3 style="margin-top:1rem;font-size:0.95rem;font-weight:600;">NLLB STTR · optional DD (JS on next-token distributions)</h3>
+    <svg class="diagram" viewBox="0 0 720 118" xmlns="http://www.w3.org/2000/svg" aria-label="NLLB STTR and DD diagram">
+      <text x="360" y="16" text-anchor="middle" font-size="10" fill="#5c6576" font-family="ui-sans-serif,system-ui,sans-serif">NLLB track — baseline and DD share this backbone</text>
+      <rect x="8" y="28" width="120" height="58" rx="4" fill="#fff" stroke="#1a1d24" stroke-width="1.2"/>
+      <text x="68" y="52" text-anchor="middle" font-size="10" font-family="ui-sans-serif,system-ui,sans-serif">Source</text>
+      <text x="68" y="68" text-anchor="middle" font-size="8" fill="#5c6576" font-family="ui-sans-serif,system-ui,sans-serif">stream</text>
+      <line x1="128" y1="57" x2="152" y2="57" stroke="#1a1d24" stroke-width="1.2"/>
+      <polygon points="152,57 146,53 146,61" fill="#1a1d24"/>
+      <rect x="156" y="26" width="132" height="62" rx="4" fill="#fff7ed" stroke="#c2410c" stroke-width="1.2"/>
+      <text x="222" y="50" text-anchor="middle" font-size="10" font-family="ui-sans-serif,system-ui,sans-serif">STTREnZhAgent</text>
+      <text x="222" y="66" text-anchor="middle" font-size="8" fill="#5c6576" font-family="ui-sans-serif,system-ui,sans-serif">wait-k · uncertainty · LCP</text>
+      <text x="222" y="80" text-anchor="middle" font-size="7" fill="#9a3412" font-family="ui-sans-serif,system-ui,sans-serif">+ optional DD gate · dd_gate.py</text>
+      <line x1="288" y1="57" x2="312" y2="57" stroke="#1a1d24" stroke-width="1.2"/>
+      <polygon points="312,57 306,53 306,61" fill="#1a1d24"/>
+      <rect x="316" y="28" width="118" height="58" rx="4" fill="#fff" stroke="#1a1d24" stroke-width="1.2"/>
+      <text x="375" y="50" text-anchor="middle" font-size="8" font-family="ui-sans-serif,system-ui,sans-serif">facebook/nllb-200-distilled-600M</text>
+      <text x="375" y="66" text-anchor="middle" font-size="8" fill="#5c6576" font-family="ui-sans-serif,system-ui,sans-serif">EN→ZH · char emission</text>
+      <line x1="434" y1="57" x2="458" y2="57" stroke="#1a1d24" stroke-width="1.2"/>
+      <polygon points="458,57 452,53 452,61" fill="#1a1d24"/>
+      <rect x="462" y="28" width="110" height="58" rx="4" fill="#fef3c7" stroke="#b45309" stroke-width="1.2"/>
+      <text x="517" y="48" text-anchor="middle" font-size="8" font-family="ui-sans-serif,system-ui,sans-serif">DD (optional)</text>
+      <text x="517" y="62" text-anchor="middle" font-size="7" fill="#78350f" font-family="ui-sans-serif,system-ui,sans-serif">K futures → avg JS</text>
+      <text x="517" y="74" text-anchor="middle" font-size="7" fill="#78350f" font-family="ui-sans-serif,system-ui,sans-serif">if JS&gt;τ → READ</text>
+      <line x1="572" y1="57" x2="596" y2="57" stroke="#1a1d24" stroke-width="1.2"/>
+      <polygon points="596,57 590,53 590,61" fill="#1a1d24"/>
+      <rect x="600" y="28" width="112" height="58" rx="4" fill="#fff" stroke="#1a1d24" stroke-width="1.2"/>
+      <text x="656" y="56" text-anchor="middle" font-size="10" font-family="ui-sans-serif,system-ui,sans-serif">READ/WRITE</text>
+      <text x="360" y="108" text-anchor="middle" font-size="8" fill="#5c6576" font-family="ui-sans-serif,system-ui,sans-serif">Baseline: omit DD box (no --dd-gate / --dd-veto). DD: compares distributions from K future-conditioned prefixes (see dd_gate.py).</text>
+    </svg>
+
+    <h3 style="margin-top:1.25rem;font-size:0.95rem;font-weight:600;">Method 2 — Future / literal LCP (Qwen3-4B-Base futures + Qwen3-30B-Instruct)</h3>
+    <svg class="diagram" viewBox="0 0 720 120" xmlns="http://www.w3.org/2000/svg" aria-label="Future LCP pipeline diagram">
+      <rect x="8" y="28" width="130" height="64" rx="4" fill="#fff" stroke="#1a1d24" stroke-width="1.2"/>
+      <text x="73" y="58" text-anchor="middle" font-size="11" font-family="ui-sans-serif,system-ui,sans-serif">Source stream</text>
+      <text x="73" y="76" text-anchor="middle" font-size="9" fill="#5c6576" font-family="ui-sans-serif,system-ui,sans-serif">words · or ASR text</text>
+      <line x1="138" y1="60" x2="168" y2="60" stroke="#1a1d24" stroke-width="1.2"/>
+      <polygon points="168,60 162,56 162,64" fill="#1a1d24"/>
+      <rect x="172" y="28" width="130" height="64" rx="4" fill="#fff" stroke="#1a1d24" stroke-width="1.2"/>
+      <text x="237" y="54" text-anchor="middle" font-size="10" font-family="ui-sans-serif,system-ui,sans-serif">Future / literal LCP</text>
+      <text x="237" y="68" text-anchor="middle" font-size="7" fill="#5c6576" font-family="ui-sans-serif,system-ui,sans-serif">semantic_lcp_agent.py · wait-k</text>
+      <line x1="302" y1="60" x2="332" y2="60" stroke="#1a1d24" stroke-width="1.2"/>
+      <polygon points="332,60 326,56 326,64" fill="#1a1d24"/>
+      <rect x="336" y="28" width="130" height="64" rx="4" fill="#fff" stroke="#1a1d24" stroke-width="1.2"/>
+      <text x="401" y="54" text-anchor="middle" font-size="10" font-family="ui-sans-serif,system-ui,sans-serif">4B EN futures · 30B · LCP</text>
+      <text x="401" y="72" text-anchor="middle" font-size="8" fill="#5c6576" font-family="ui-sans-serif,system-ui,sans-serif">Qwen3-4B-Base + Qwen3-30B-Instruct (vLLM)</text>
+      <line x1="466" y1="60" x2="496" y2="60" stroke="#1a1d24" stroke-width="1.2"/>
+      <polygon points="496,60 490,56 490,64" fill="#1a1d24"/>
+      <rect x="500" y="28" width="130" height="64" rx="4" fill="#fff" stroke="#1a1d24" stroke-width="1.2"/>
+      <text x="565" y="58" text-anchor="middle" font-size="11" font-family="ui-sans-serif,system-ui,sans-serif">Evaluator</text>
+      <text x="565" y="76" text-anchor="middle" font-size="9" fill="#5c6576" font-family="ui-sans-serif,system-ui,sans-serif">BLEU · AL · LAAL</text>
+      <text x="360" y="18" text-anchor="middle" font-size="10" fill="#5c6576" font-family="ui-sans-serif,system-ui,sans-serif">Future / literal LCP — pipeline overview</text>
+    </svg>
+
+    <h3 style="margin-top:1.25rem;font-size:0.98rem;font-weight:600;">Method 2 stack — component table</h3>
+    <p class="note">
+      For <strong>NLLB</strong> and <strong>DD + JS</strong>, see the summary table at the top and the <em>Run it locally</em> cards. This table is only for the Qwen 4B + 30B path.
+    </p>
+
+    <div class="panel" style="margin-top:0.75rem;">
+      <div class="results-table-wrap" style="margin-top:0;">
+        <table class="results-table">
+          <thead>
+            <tr>
+              <th>Model / component</th>
+              <th>Role</th>
+              <th>How it is wired</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>Qwen3-4B-Base</code></td>
+              <td>Causal LM: sample <em>K</em> English continuations from the observed prefix.</td>
+              <td><code>--future-lm-path</code> (local GPU)</td>
+            </tr>
+            <tr>
+              <td><code>Qwen3-30B-Instruct</code></td>
+              <td>Translator: one ZH hypothesis per future; future text is context only in the prompt.</td>
+              <td>vLLM <code>--vllm-api-base</code></td>
+            </tr>
+            <tr>
+              <td>Quorum LCP (Python)</td>
+              <td>After <code>_committed</code>, extend only while enough hypotheses agree on the next Chinese prefix (default ≥60%).</td>
+              <td><code>semantic_lcp_agent.py</code></td>
+            </tr>
+            <tr>
+              <td><code>--num-futures 0</code></td>
+              <td>Ablate 4B: single-path 30B translation (“Qwen30B direct”).</td>
+              <td>Same SimulEval agent</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <svg class="diagram-wide" viewBox="0 0 760 112" xmlns="http://www.w3.org/2000/svg" aria-label="Future LCP internal dataflow">
+      <text x="380" y="18" text-anchor="middle" font-size="11" font-weight="600" fill="#1a1d24" font-family="ui-sans-serif,system-ui,sans-serif">One decode/commit cycle · Future / literal LCP</text>
+      <rect x="12" y="26" width="736" height="58" rx="4" fill="#fff" stroke="#1a1d24" stroke-width="1"/>
+      <text x="24" y="50" font-size="10" fill="#5c6576" font-family="ui-monospace,Menlo,monospace">prefix</text>
+      <line x1="72" y1="55" x2="102" y2="55" stroke="#1a1d24" stroke-width="1.2"/>
+      <polygon points="102,55 96,51 96,59" fill="#1a1d24"/>
+      <rect x="108" y="30" width="108" height="50" rx="3" fill="#f3e5f5" stroke="#7b1fa2" stroke-width="1"/>
+      <text x="162" y="48" text-anchor="middle" font-size="9" font-family="ui-sans-serif,sans-serif">Qwen3-4B-Base</text>
+      <text x="162" y="62" text-anchor="middle" font-size="7" fill="#5c6576" font-family="ui-sans-serif,sans-serif">sample K · English only</text>
+      <line x1="216" y1="55" x2="234" y2="55" stroke="#1a1d24" stroke-width="1.2"/>
+      <polygon points="234,55 228,51 228,59" fill="#1a1d24"/>
+      <rect x="238" y="30" width="118" height="50" rx="3" fill="#e8f0fe" stroke="#0b57d0" stroke-width="1"/>
+      <text x="297" y="46" text-anchor="middle" font-size="9" font-family="ui-sans-serif,sans-serif">Qwen3-30B-Instruct</text>
+      <text x="297" y="60" text-anchor="middle" font-size="7" fill="#5c6576" font-family="ui-sans-serif,sans-serif">vLLM · K Chinese hyps</text>
+      <line x1="356" y1="55" x2="374" y2="55" stroke="#1a1d24" stroke-width="1.2"/>
+      <polygon points="374,55 368,51 368,59" fill="#1a1d24"/>
+      <rect x="378" y="30" width="100" height="50" rx="3" fill="#e0f2f1" stroke="#0d7377" stroke-width="1"/>
+      <text x="428" y="48" text-anchor="middle" font-size="9" font-family="ui-sans-serif,sans-serif">Quorum LCP</text>
+      <text x="428" y="62" text-anchor="middle" font-size="7" fill="#5c6576" font-family="ui-sans-serif,sans-serif">extend _committed</text>
+      <line x1="478" y1="55" x2="496" y2="55" stroke="#1a1d24" stroke-width="1.2"/>
+      <polygon points="496,55 490,51 490,59" fill="#1a1d24"/>
+      <rect x="500" y="30" width="88" height="50" rx="3" fill="#fff" stroke="#1a1d24" stroke-width="1"/>
+      <text x="544" y="54" text-anchor="middle" font-size="9" font-family="ui-sans-serif,sans-serif">READ / WRITE</text>
+      <text x="380" y="98" text-anchor="middle" font-size="7" fill="#5c6576" font-family="ui-sans-serif,sans-serif">No NLLB in this path. Futures are English strings only; translation is always Qwen3-30B-Instruct.</text>
+    </svg>
+
+    <h2>Reproduce Locally</h2>
+    <p class="note">Expand each card for the exact commands. Serve from repo root for <code>../agents/…</code> links. NLLB demos need a GPU; Method 2 (Future LCP) needs vLLM for <strong>Qwen3-30B-Instruct</strong> plus local <strong>Qwen3-4B-Base</strong>. <strong>CoVoST + Whisper</strong> needs GPU ASR plus the same dependencies as your chosen agent.</p>
+    <div class="method-grid three-col">
+      <article class="method-card is-open" id="card-nllb-base">
+        <button type="button" class="method-toggle" id="btn-nllb-base" aria-expanded="true" aria-controls="panel-nllb-base">
+          <span class="method-title-wrap">
+            <h3>Baselines 1 &amp; 2 + optional STTR-v2</h3>
+            <span class="method-hint"><code>sttr_enzh_agent.py</code> · greedy vs beam · same SimulEval agent</span>
+          </span>
+          <span class="chevron" aria-hidden="true">▼</span>
+        </button>
+        <div class="method-panel" id="panel-nllb-base">
+          <svg class="track-mini" viewBox="0 0 400 72" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <rect x="4" y="14" width="72" height="44" rx="3" fill="#fff" stroke="#1a1d24"/>
+            <text x="40" y="40" text-anchor="middle" font-size="9" font-family="sans-serif">wait-k</text>
+            <line x1="76" y1="36" x2="100" y2="36" stroke="#1a1d24"/>
+            <polygon points="100,36 94,32 94,40" fill="#1a1d24"/>
+            <rect x="104" y="14" width="88" height="44" rx="3" fill="#fff7ed" stroke="#c2410c"/>
+            <text x="148" y="38" text-anchor="middle" font-size="8" font-family="sans-serif">STTR · NLLB</text>
+            <line x1="192" y1="36" x2="216" y2="36" stroke="#1a1d24"/>
+            <polygon points="216,36 210,32 210,40" fill="#1a1d24"/>
+            <rect x="220" y="14" width="86" height="44" rx="3" fill="#e8f5e9" stroke="#2e7d32"/>
+            <text x="263" y="38" text-anchor="middle" font-size="8" font-family="sans-serif">read-more+LCP</text>
+            <line x1="306" y1="36" x2="330" y2="36" stroke="#1a1d24"/>
+            <polygon points="330,36 324,32 324,40" fill="#1a1d24"/>
+            <rect x="334" y="14" width="62" height="44" rx="3" fill="#fff" stroke="#1a1d24"/>
+            <text x="365" y="40" text-anchor="middle" font-size="9" font-family="sans-serif">OUT</text>
+          </svg>
+          <p><strong>Strict baseline</strong> (what you meant: wait-k + beam, no STTR “extras”): huge <code>--uncertainty-threshold</code>, <code>--max-extra-reads 0</code>, set <code>--beam-size</code> (default greedy is 1). One NLLB decode per WRITE/COMMIT step on the current prefix.</p>
+          <p><strong>STTR-v2 (no DD)</strong>: lower threshold → <strong>read-more</strong> + possible <strong>LCP</strong> over multiple NLLB candidates; still no DD unless you add those flags.</p>
+          <p><strong>Optional:</strong> <code>--trace-refinement</code> → <code>refine_trace.jsonl</code>.</p>
+          <p class="file-links">
+            <a href="../agents/sttr_enzh_agent.py">agents/sttr_enzh_agent.py</a>
+            · <a href="../scripts/run_nllb_waitk_beam_demo.sh">run_nllb_waitk_beam_demo.sh</a>
+            · <a href="../scripts/run_nllb_sttr_demo.sh">run_nllb_sttr_demo.sh</a>
+          </p>
+          <span class="cmd"># Strict: wait-k + beam (BEAM_SIZE default 8)
+bash scripts/run_nllb_waitk_beam_demo.sh
+
+# STTR-v2 (uncertainty + read-more + LCP path enabled)
+bash scripts/run_nllb_sttr_demo.sh
+
+# Strict (manual):
+simuleval \
+  --agent agents/sttr_enzh_agent.py \
+  --source data/enzh/test_source_5.txt \
+  --target data/enzh/test_target_5.txt \
+  --source-lang eng_Latn --target-lang zho_Hans \
+  --wait-k 5 --beam-size 8 \
+  --uncertainty-threshold 1e9 --max-extra-reads 0 \
+  --output outputs/demo_nllb_waitk_beam/</span>
+        </div>
+      </article>
+
+      <article class="method-card" id="card-dd">
+        <button type="button" class="method-toggle" id="btn-dd" aria-expanded="false" aria-controls="panel-dd-card">
+          <span class="method-title-wrap">
+            <h3>Method 1 — DD + JS divergence</h3>
+            <span class="method-hint">Qwen3-4B-Base futures · NLLB distributions · <code>dd_gate.py</code></span>
+          </span>
+          <span class="chevron" aria-hidden="true">▼</span>
+        </button>
+        <div class="method-panel" id="panel-dd-card" hidden>
+          <svg class="track-mini" viewBox="0 0 440 72" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <rect x="4" y="14" width="70" height="44" rx="3" fill="#fff" stroke="#1a1d24"/>
+            <text x="39" y="40" text-anchor="middle" font-size="8" font-family="sans-serif">K futures</text>
+            <line x1="74" y1="36" x2="98" y2="36" stroke="#1a1d24"/>
+            <polygon points="98,36 92,32 92,40" fill="#1a1d24"/>
+            <rect x="102" y="14" width="92" height="44" rx="3" fill="#fff" stroke="#1a1d24"/>
+            <text x="148" y="34" text-anchor="middle" font-size="8" font-family="sans-serif">NLLB next-token</text>
+            <text x="148" y="46" text-anchor="middle" font-size="7" font-family="sans-serif">distributions</text>
+            <line x1="194" y1="36" x2="218" y2="36" stroke="#1a1d24"/>
+            <polygon points="218,36 212,32 212,40" fill="#1a1d24"/>
+            <rect x="222" y="14" width="100" height="44" rx="3" fill="#fef3c7" stroke="#b45309"/>
+            <text x="272" y="40" text-anchor="middle" font-size="8" font-family="sans-serif">avg JS (pairs)</text>
+            <line x1="322" y1="36" x2="346" y2="36" stroke="#1a1d24"/>
+            <polygon points="346,36 340,32 340,40" fill="#1a1d24"/>
+            <rect x="350" y="14" width="86" height="44" rx="3" fill="#e0f2f1" stroke="#0d7377"/>
+            <text x="393" y="40" text-anchor="middle" font-size="8" font-family="sans-serif">READ if JS&gt;τ</text>
+          </svg>
+          <p><strong>DD:</strong> <em>K</em> English continuations from <code>--dd-future-lm</code> only. Per future, NLLB gives the next Chinese token distribution; average pairwise <strong>Jensen–Shannon</strong> over <code>--dd-steps</code> → if <code>&gt; --dd-tau</code>, <strong>READ</strong>.</p>
+          <p><strong><code>--dd-gate</code></strong> = DD before commit. <strong><code>--dd-veto</code></strong> = baseline may commit unless DD vetoes.</p>
+          <p><strong>Trace:</strong> <code>OUTPUT/dd_trace.jsonl</code> when DD is on and <code>--output</code> is set.</p>
+          <p class="file-links">
+            <a href="../agents/dd_gate.py">agents/dd_gate.py</a>
+            · <a href="../scripts/run_dd_gate_demo.sh">scripts/run_dd_gate_demo.sh</a>
+          </p>
+          <span class="cmd">bash scripts/run_dd_gate_demo.sh
+
+simuleval \
+  --agent agents/sttr_enzh_agent.py \
+  --source data/enzh/test_source_5.txt \
+  --target data/enzh/test_target_5.txt \
+  --wait-k 5 \
+  --uncertainty-threshold 1.5 \
+  --dd-gate \
+  --dd-tau 0.05 \
+  --dd-futures-k 4 \
+  --dd-steps 3 \
+  --dd-future-lm /data/user_data/haolingp/models/Qwen3-4B-Base \
+  --dd-future-words 15 \
+  --dd-future-temperature 0.9 \
+  --output outputs/demo_dd_full/</span>
+        </div>
+      </article>
+
+      <article class="method-card" id="card-track-b">
+        <button type="button" class="method-toggle" id="btn-track-b" aria-expanded="false" aria-controls="panel-track-b">
+          <span class="method-title-wrap">
+            <h3>Method 2 — Future / literal LCP</h3>
+            <span class="method-hint">Qwen3-4B-Base futures · Qwen3-30B-Instruct (vLLM) · quorum LCP</span>
+          </span>
+          <span class="chevron" aria-hidden="true">▼</span>
+        </button>
+        <div class="method-panel" id="panel-track-b" hidden>
+          <svg class="track-mini" viewBox="0 0 440 72" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <rect x="4" y="14" width="68" height="44" rx="3" fill="#fff" stroke="#1a1d24"/>
+            <text x="38" y="40" text-anchor="middle" font-size="9" font-family="sans-serif">Policy</text>
+            <line x1="72" y1="36" x2="96" y2="36" stroke="#1a1d24"/>
+            <polygon points="96,36 90,32 90,40" fill="#1a1d24"/>
+            <rect x="100" y="14" width="76" height="44" rx="3" fill="#f3e5f5" stroke="#7b1fa2"/>
+            <text x="138" y="38" text-anchor="middle" font-size="8" font-family="sans-serif">Qwen3-4B-Base</text>
+            <line x1="176" y1="36" x2="200" y2="36" stroke="#1a1d24"/>
+            <polygon points="200,36 194,32 194,40" fill="#1a1d24"/>
+            <rect x="204" y="14" width="84" height="44" rx="3" fill="#e8f0fe" stroke="#0b57d0"/>
+            <text x="246" y="38" text-anchor="middle" font-size="8" font-family="sans-serif">30B-Instruct</text>
+            <line x1="288" y1="36" x2="312" y2="36" stroke="#1a1d24"/>
+            <polygon points="312,36 306,32 306,40" fill="#1a1d24"/>
+            <rect x="316" y="14" width="120" height="44" rx="3" fill="#e0f2f1" stroke="#0d7377"/>
+            <text x="376" y="40" text-anchor="middle" font-size="9" font-family="sans-serif">LCP consensus</text>
+          </svg>
+          <p><strong>LLMs:</strong> <code>Qwen3-4B-Base</code> + <code>Qwen3-30B-Instruct</code> (vLLM). <code>--num-futures 0</code> = 30B-direct. <strong>No NLLB.</strong></p>
+          <p><strong>Verbose:</strong> <code>--verbose</code> and <code>DIR/lcp_trace.jsonl</code>.</p>
+          <p class="file-links">
+            <a href="../agents/semantic_lcp_agent.py">agents/semantic_lcp_agent.py</a>
+            · <a href="../scripts/run_semantic_lcp_demo.sh">scripts/run_semantic_lcp_demo.sh</a>
+          </p>
+          <span class="cmd">bash scripts/run_semantic_lcp_demo.sh
+
+simuleval \
+  --agent agents/semantic_lcp_agent.py \
+  --source data/enzh/rand100_source.txt \
+  --target data/enzh/rand100_target.txt \
+  --wait-k 5 \
+  --num-futures 4 \
+  --verbose \
+  --future-lm-path /data/user_data/haolingp/models/Qwen3-4B-Base \
+  --vllm-api-base http://localhost:8100/v1 \
+  --vllm-model-name qwen30b-instruct \
+  --output outputs/semantic_lcp_k5/</span>
+        </div>
+      </article>
+
+      <article class="method-card" id="card-covost">
+        <button type="button" class="method-toggle" id="btn-covost" aria-expanded="false" aria-controls="panel-covost">
+          <span class="method-title-wrap">
+            <h3>Cascaded ST — CoVoST + Whisper + SimulEval</h3>
+            <span class="method-hint">Audio → ASR text → same agents as WMT19-style runs</span>
+          </span>
+          <span class="chevron" aria-hidden="true">▼</span>
+        </button>
+        <div class="method-panel" id="panel-covost" hidden>
+          <p><strong>Step A — ASR + text files:</strong> <code>scripts/prepare_covost_asr_texts.py</code> downloads the HF mirror, runs <strong>openai/whisper-small</strong> (override with <code>--whisper-model</code>), writes <code>data/covost_enzh/&lt;prefix&gt;_source_asr.txt</code> and <code>&lt;prefix&gt;_target_zh.txt</code> (Chinese spaced like WMT for BLEU).</p>
+          <p><strong>Step B — Your pipeline:</strong> Pass the ASR file as <code>--source</code> and the formatted ZH ref as <code>--target</code> to any agent (NLLB baseline, DD, or <code>semantic_lcp_agent.py</code>). The bundled slurm job runs a wait‑k NLLB baseline on the 100‑utterance pilot by default.</p>
+          <p><strong>Scope:</strong> Utterance-level ASR (one English line per clip); SimulEval still streams that line word-wise. Report ASR quality and cumulative latency honestly vs pure text.</p>
+          <p class="file-links">
+            <a href="../scripts/prepare_covost_asr_texts.py">prepare_covost_asr_texts.py</a>
+            · <a href="../scripts/run_covost_cascaded_nllb.sbatch">run_covost_cascaded_nllb.sbatch</a>
+            · <a href="../scripts/export_covost_wav_samples.py">export_covost_wav_samples.py</a>
+          </p>
+          <span class="cmd">cd IDL_final_3small
+
+# A) Build ASR source + ZH refs (GPU; default test[:100], prefix subset100)
+python scripts/prepare_covost_asr_texts.py \
+  --hf-split 'test[:100]' \
+  --prefix subset100 \
+  --whisper-model openai/whisper-small \
+  --device cuda:0
+
+# B) SimulEval on ASR text — swap --agent / flags for DD or Future LCP
+simuleval \
+  --agent agents/sttr_enzh_agent.py \
+  --source data/covost_enzh/subset100_source_asr.txt \
+  --target data/covost_enzh/subset100_target_zh.txt \
+  --source-lang eng_Latn --target-lang zho_Hans \
+  --wait-k 5 --model-name facebook/nllb-200-distilled-600M \
+  --device cuda:0 --beam-size 1 \
+  --uncertainty-threshold 999 \
+  --output outputs/covost_cascaded/my_run
+
+# Optional: HPC one-shot (ASR if missing, then simuleval)
+# sbatch scripts/run_covost_cascaded_nllb.sbatch</span>
+        </div>
+      </article>
+    </div>
+
+    <h2>Optional CoVoST clip</h2>
+    <p class="note">Run <code>python scripts/export_covost_wav_samples.py --indices 0</code> to place <code>demo/audio/sample_0.wav</code> next to this file. That clip is the same corpus family as the cascaded pipeline above.</p>
+    <audio controls preload="none">
+      <source src="audio/sample_0.wav" type="audio/wav" />
+    </audio>
+
+    <footer class="foot">
+      <strong>Local viewing:</strong> from repo root <code>IDL_final_3small/</code>, run <code>python -m http.server 8080</code> and open <code>http://localhost:8080/demo/pipeline.html</code> — this resolves <code>demo/audio/</code>, <code>../agents/*.py</code> links, and avoids file-URL CORS issues.
+      If you only <code>cd demo</code>, audio still works; agent links may 404 unless you use the root server.
+    </footer>
+  </div>
+
+  <script>
+(function () {
+      var WAIT_K = 3;
+      var WORDS = "The river was named after his cousin Maria".split(" ");
+      var ZH = "这条河以他堂兄玛丽亚的名字命名。".split("");
+
+      function buildTrace(words, zhChars, k) {
+        var src = 0;
+        var tgt = 0;
+        var steps = [];
+        var maxIter = 2000;
+        var iter = 0;
+
+        steps.push({
+          action: "START",
+          src: 0,
+          tgt: 0,
+          detail: "Initial state: no source words read, no target committed.",
+          formula: "|src| − |tgt| = 0 − 0 = 0.",
+        });
+
+        while (iter++ < maxIter) {
+          var diff = src - tgt;
+          var srcDone = src >= words.length;
+          var tgtDone = tgt >= zhChars.length;
+
+          if (tgtDone && srcDone) break;
+
+          if (!tgtDone && (diff >= k || srcDone)) {
+            var ch = zhChars[tgt];
+            tgt += 1;
+            steps.push({
+              action: "WRITE",
+              src: src,
+              tgt: tgt,
+              char: ch,
+              detail: srcDone
+                ? "End of source: finish emitting remaining reference characters."
+                : "Condition |src| − |tgt| ≥ " + k + " holds before write. One Chinese character is committed (irreversible).",
+              formula: "Before: |src|−|tgt| = " + src + "−" + (tgt - 1) + " = " + (src - (tgt - 1)) + ". After write: |tgt| = " + tgt + ".",
+            });
+            continue;
+          }
+
+          if (!srcDone) {
+            src += 1;
+            steps.push({
+              action: "READ",
+              src: src,
+              tgt: tgt,
+              detail: "Ingest next English word from the stream. Wait-k requires |src| − |tgt| ≥ " + k + " before the next WRITE (until source ends).",
+              formula: "Now |src|−|tgt| = " + src + "−" + tgt + " = " + (src - tgt) + ".",
+            });
+            continue;
+          }
+
+          break;
+        }
+
+        return steps;
+      }
+
+      var TRACE = buildTrace(WORDS, ZH, WAIT_K);
+
+      function mountWaitkAnimator(cfg) {
+        var trace = cfg.trace;
+        var ids = cfg.ids;
+        var baselineLabel = cfg.baselineLabel;
+        var idx = 0;
+        var playTimer = null;
+
+        var elStep = document.getElementById(ids.stepCounter);
+        var elPrev = document.getElementById(ids.btnPrev);
+        var elNext = document.getElementById(ids.btnNext);
+        var elReset = document.getElementById(ids.btnReset);
+        var elPlay = document.getElementById(ids.btnPlay);
+        var elSrc = document.getElementById(ids.srcChips);
+        var elSrcF = document.getElementById(ids.srcFormula);
+        var elBadge = document.getElementById(ids.policyBadge);
+        var elPolD = document.getElementById(ids.policyDetail);
+        var elPolF = document.getElementById(ids.policyFormula);
+        var elDecD = document.getElementById(ids.decodeDetail);
+        var elDecF = document.getElementById(ids.decodeFormula);
+        var elZh = document.getElementById(ids.zhLine);
+        var elTgtF = document.getElementById(ids.tgtFormula);
+        var elNote = document.getElementById(ids.stepNote);
+        var elLog = document.getElementById(ids.eventLog);
+        var cardSrc = document.getElementById(ids.cardSrc);
+        var cardPol = document.getElementById(ids.cardPolicy);
+        var cardDec = document.getElementById(ids.cardDecode);
+        var cardTgt = document.getElementById(ids.cardTgt);
+
+        function clearPulse() {
+          [cardSrc, cardPol, cardDec, cardTgt].forEach(function (c) {
+            if (c) c.classList.remove("pulse");
+          });
+        }
+
+        function decodeCopy(st) {
+          if (baselineLabel === "b1") {
+            if (st.action === "START") {
+              return {
+                line:
+                  "**Decoder:** not invoked yet. After enough source arrives, **facebook/nllb-200-distilled-600M** runs **greedy** (beam_size=1) on the EN prefix.",
+                formula: "Baseline 1 stack — only NLLB, smallest compute footprint in this comparison.",
+              };
+            }
+            if (st.action === "READ") {
+              return {
+                line:
+                  "**Decoder:** no new ZH emission. **facebook/nllb-200-distilled-600M** stays idle for this SimulEval READ.",
+                formula: "READ grows |src|; NLLB is not asked for an extra commit until policy allows WRITE.",
+              };
+            }
+            if (st.action === "WRITE") {
+              return {
+                line:
+                  "**facebook/nllb-200-distilled-600M** (greedy / beam 1) proposes the next character **" +
+                  st.char +
+                  "** given the current English prefix.",
+                formula: "Single hypothesis path — no multi-beam gate in Baseline 1.",
+              };
+            }
+          }
+          if (baselineLabel === "b2") {
+            if (st.action === "START") {
+              return {
+                line:
+                  "**Decoder:** **facebook/nllb-200-distilled-600M** with **beam search** (e.g. beam_size=8). After wait-k, each WRITE takes the next Chinese unit from the **highest-scoring beam** for the current EN prefix.",
+                formula:
+                  "Baseline 2 = same wait-k as Baseline 1 + wider beam (no fake extra steps). Threshold/entropy in code = **--uncertainty-threshold** (optional READ-more), not a “beam gate” event.",
+              };
+            }
+            if (st.action === "READ") {
+              return {
+                line:
+                  "**Decoder:** no ZH commit on a pure READ. NLLB beam is re-run when the policy eventually commits after wait-k (and after any real entropy/read-more logic if you enabled it in simuleval).",
+                formula: "READ grows |src|; same SimulEval READ/WRITE loop as Baseline 1.",
+              };
+            }
+            if (st.action === "WRITE") {
+              return {
+                line:
+                  "**facebook/nllb-200-distilled-600M** with **beam_size = 8**: next character **" +
+                  st.char +
+                  "** from the **best beam** for this prefix (toy trace; step count matches Baseline 1).",
+                formula: "Contrast with Baseline 1: multi-hypothesis beam vs greedy (beam 1).",
+              };
+            }
+          }
+          return { line: "", formula: "" };
+        }
+
+        function inlineMini(s) {
+          var esc = document.createElement("div");
+          esc.textContent = s;
+          var t = esc.innerHTML;
+          return t.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+        }
+
+        function render() {
+          var st = trace[idx];
+          var srcN = st.src;
+          var tgtN = st.tgt;
+
+          elStep.innerHTML =
+            "Step <strong>" + idx + "</strong> / <strong>" + (trace.length - 1) + "</strong>";
+
+          elPrev.disabled = idx <= 0;
+          elNext.disabled = idx >= trace.length - 1;
+
+          elSrc.innerHTML = "";
+          var highlightIdx = st.action === "READ" ? srcN - 1 : -1;
+          if (st.action === "START") highlightIdx = -1;
+          for (var w = 0; w < srcN; w++) {
+            var span = document.createElement("span");
+            span.className = "chip" + (w === highlightIdx ? " new" : "");
+            span.textContent = WORDS[w];
+            elSrc.appendChild(span);
+          }
+          if (srcN === 0) {
+            var empty = document.createElement("span");
+            empty.style.fontSize = "0.85rem";
+            empty.style.color = "#5c6576";
+            empty.textContent = "(empty)";
+            elSrc.appendChild(empty);
+          }
+          elSrcF.textContent = "|src| = " + srcN + " word(s) visible to the agent.";
+
+          elBadge.innerHTML = "";
+          if (st.action === "READ") {
+            elBadge.innerHTML = '<span class="badge read">READ</span>';
+            elPolD.textContent = st.detail;
+            elPolF.textContent = st.formula;
+          } else if (st.action === "WRITE") {
+            elBadge.innerHTML = '<span class="badge write">WRITE</span>';
+            elPolD.textContent = st.detail;
+            elPolF.textContent = st.formula;
+          } else {
+            elBadge.innerHTML = '<span class="badge" style="background:#eee;color:#5c6576;">INIT</span>';
+            elPolD.textContent = st.detail;
+            elPolF.textContent = st.formula;
+          }
+
+          var dec = decodeCopy(st);
+          elDecD.innerHTML = inlineMini(dec.line);
+          elDecF.textContent = dec.formula;
+
+          elZh.innerHTML = "";
+          for (var t = 0; t < ZH.length; t++) {
+            var s = document.createElement("span");
+            s.textContent = ZH[t];
+            if (t < tgtN) {
+              s.className = "committed";
+              if (st.action === "WRITE" && t === tgtN - 1) s.className += " just";
+            } else {
+              s.className = "pending";
+            }
+            elZh.appendChild(s);
+          }
+          elTgtF.textContent = "|tgt| = " + tgtN + " character(s) committed to the hypothesis.";
+
+          elNote.textContent =
+            idx === 0
+              ? "Use Next / Play. Each line in the log is one animation step (Baseline " +
+                (baselineLabel === "b1" ? "1" : "2") +
+                ")."
+              : "Event: " + st.action + ".";
+
+          clearPulse();
+          if (st.action === "READ" || st.action === "START") cardSrc.classList.add("pulse");
+          if (st.action === "READ" || st.action === "WRITE") cardPol.classList.add("pulse");
+          if (st.action === "WRITE") {
+            cardDec.classList.add("pulse");
+            cardTgt.classList.add("pulse");
+          }
+
+          elLog.innerHTML = "";
+          for (var i = 0; i <= idx; i++) {
+            var row = trace[i];
+            var line = document.createElement("div");
+            line.className = "log-line";
+            var suffix = "";
+            if (row.action === "WRITE" && row.char) suffix = ' → emit "' + row.char + '"';
+            line.textContent =
+              i + ". [" + row.action + "] |src|=" + row.src + ", |tgt|=" + row.tgt + suffix;
+            elLog.appendChild(line);
+          }
+          elLog.scrollTop = elLog.scrollHeight;
+        }
+
+        elNext.addEventListener("click", function () {
+          if (idx < trace.length - 1) {
+            idx++;
+            render();
+          }
+        });
+        elPrev.addEventListener("click", function () {
+          if (idx > 0) {
+            idx--;
+            render();
+          }
+        });
+        elReset.addEventListener("click", function () {
+          if (playTimer) {
+            clearInterval(playTimer);
+            playTimer = null;
+            elPlay.textContent = "Play";
+          }
+          idx = 0;
+          render();
+        });
+        elPlay.addEventListener("click", function () {
+          if (playTimer) {
+            clearInterval(playTimer);
+            playTimer = null;
+            elPlay.textContent = "Play";
+            return;
+          }
+          elPlay.textContent = "Pause";
+          playTimer = setInterval(function () {
+            if (idx >= trace.length - 1) {
+              clearInterval(playTimer);
+              playTimer = null;
+              elPlay.textContent = "Play";
+              return;
+            }
+            idx++;
+            render();
+          }, 1200);
+        });
+
+        render();
+      }
+
+      mountWaitkAnimator({
+        baselineLabel: "b1",
+        trace: TRACE,
+        ids: {
+          stepCounter: "b1-stepCounter",
+          btnPrev: "b1BtnPrev",
+          btnNext: "b1BtnNext",
+          btnReset: "b1BtnReset",
+          btnPlay: "b1BtnPlay",
+          srcChips: "b1-srcChips",
+          srcFormula: "b1-srcFormula",
+          policyBadge: "b1-policyBadge",
+          policyDetail: "b1-policyDetail",
+          policyFormula: "b1-policyFormula",
+          decodeDetail: "b1-decodeDetail",
+          decodeFormula: "b1-decodeFormula",
+          zhLine: "b1-zhLine",
+          tgtFormula: "b1-tgtFormula",
+          stepNote: "b1-stepNote",
+          eventLog: "b1-eventLog",
+          cardSrc: "b1-cardSrc",
+          cardPolicy: "b1-cardPolicy",
+          cardDecode: "b1-cardDecode",
+          cardTgt: "b1-cardTgt",
+        },
+      });
+
+      mountWaitkAnimator({
+        baselineLabel: "b2",
+        trace: TRACE,
+        ids: {
+          stepCounter: "b2-stepCounter",
+          btnPrev: "b2BtnPrev",
+          btnNext: "b2BtnNext",
+          btnReset: "b2BtnReset",
+          btnPlay: "b2BtnPlay",
+          srcChips: "b2-srcChips",
+          srcFormula: "b2-srcFormula",
+          policyBadge: "b2-policyBadge",
+          policyDetail: "b2-policyDetail",
+          policyFormula: "b2-policyFormula",
+          decodeDetail: "b2-decodeDetail",
+          decodeFormula: "b2-decodeFormula",
+          zhLine: "b2-zhLine",
+          tgtFormula: "b2-tgtFormula",
+          stepNote: "b2-stepNote",
+          eventLog: "b2-eventLog",
+          cardSrc: "b2-cardSrc",
+          cardPolicy: "b2-cardPolicy",
+          cardDecode: "b2-cardDecode",
+          cardTgt: "b2-cardTgt",
+        },
+      });
+
+      var kEl = document.getElementById("kVal");
+      if (kEl) kEl.textContent = String(WAIT_K);
+    })();
+
+    (function () {
+      function escapeHtml(s) {
+        var d = document.createElement("div");
+        d.textContent = s;
+        return d.innerHTML;
+      }
+      function inlineBold(s) {
+        return escapeHtml(s).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+      }
+
+      var DDW_STEPS = [
+        {
+          kind: "text",
+          title: "Step 0 — Method 1 (DD + JS): which models?",
+          body:
+            "Entry point: **agents/sttr_enzh_agent.py** + **agents/dd_gate.py**. **Qwen3-4B-Base** (causal LM, `--dd-future-lm`) samples **K English futures** from the streaming prefix only. For **each** future string, **facebook/nllb-200-distilled-600M** exposes the **next Chinese token distribution** (averaged over the first `--dd-steps` positions in code). **Pairwise Jensen–Shannon** across futures is averaged; if it **`> --dd-tau`**, policy outputs **READ** instead of committing.",
+        },
+        {
+          kind: "text",
+          title: "Step 1 — Wait-k satisfied (toy moment)",
+          body:
+            "Suppose **wait-k** is satisfied and the baseline would like to commit. With **`--dd-gate`**, **DD runs first**. (With **`--dd-veto`**, baseline chooses first; DD can still block a commit — not shown in this toy sequence.)",
+        },
+        {
+          kind: "prefix",
+          title: "Step 2 — English prefix visible when DD runs",
+          body: "DD never peeks beyond what the agent already READ from the stream:",
+          enPrefix: "The river was",
+        },
+        {
+          kind: "futures",
+          title: "Step 3 — Qwen3-4B-Base samples K futures (English)",
+          body:
+            "**Local GPU** runs **Qwen3-4B-Base** with temperature sampling. Each line is one continuation used only to **condition** NLLB — not committed as source text.",
+          futures: [
+            "named after Maria, who…",
+            "flooding last summer damaged…",
+            "home to many rare fish…",
+            "seen from the hiking trail…",
+          ],
+        },
+        {
+          kind: "dists",
+          title: "Step 4 — facebook/nllb-200-distilled-600M: next-token distributions (toy bars)",
+          body:
+            "For each future-conditioned prefix, take the **top-3** Chinese subword IDs (illustrative mass). The **disagreement** across rows is what DD measures.",
+          rows: [
+            { label: "Future A", bars: [0.52, 0.21, 0.15] },
+            { label: "Future B", bars: [0.18, 0.44, 0.28] },
+            { label: "Future C", bars: [0.41, 0.31, 0.12] },
+            { label: "Future D", bars: [0.22, 0.39, 0.25] },
+          ],
+        },
+        {
+          kind: "js",
+          title: "Step 5 — Average pairwise Jensen–Shannon",
+          body:
+            "Code averages **JS** over all future pairs (symmetric, bounded). Toy value **0.12** with **`--dd-tau 0.05`** ⇒ **high disagreement** → prefer **READ** (wait for more English) instead of locking the next character.",
+          jsAvg: "0.12",
+          tau: "0.05",
+          decision: "READ",
+        },
+        {
+          kind: "text",
+          title: "Step 6 — Where this is logged",
+          body:
+            "With **`--output DIR`** and **`--dd-gate`** / **`--dd-veto`**, each DD decision appends one JSON record to **`DIR/dd_trace.jsonl`** (scores, τ, READ vs commit). Full SimulEval stream is still **`instances.log`**.",
+        },
+      ];
+
+      var ddwIdx = 0;
+      var ddwPlay = null;
+
+      function barRow(rank, mass) {
+        return (
+          '<div class="dd-bar-row"><span>' +
+          rank +
+          '</span><div class="dd-bar"><i style="width:' +
+          Math.round(mass * 100) +
+          '%"></i></div><span>' +
+          mass.toFixed(2) +
+          "</span></div>"
+        );
+      }
+
+      function renderDdw() {
+        var st = DDW_STEPS[ddwIdx];
+        document.getElementById("ddwStepTitle").textContent = st.title;
+        document.getElementById("ddwNarrative").innerHTML = inlineBold(st.body);
+        var vis = document.getElementById("ddwVisual");
+        vis.innerHTML = "";
+        document.getElementById("ddw-stepCounter").innerHTML =
+          "Step <strong>" + ddwIdx + "</strong> / <strong>" + (DDW_STEPS.length - 1) + "</strong>";
+        document.getElementById("ddwBtnPrev").disabled = ddwIdx <= 0;
+        document.getElementById("ddwBtnNext").disabled = ddwIdx >= DDW_STEPS.length - 1;
+
+        var log = document.getElementById("ddwLog");
+        log.innerHTML = "";
+        for (var i = 0; i <= ddwIdx; i++) {
+          var row = document.createElement("div");
+          row.className = "log-line";
+          row.textContent = i + ". " + DDW_STEPS[i].title;
+          log.appendChild(row);
+        }
+
+        if (st.kind === "prefix") {
+          vis.innerHTML =
+            '<p style="margin:0;font-family:var(--mono);font-size:1rem;"><strong>EN prefix:</strong> ' +
+            escapeHtml(st.enPrefix) +
+            "</p>";
+          return;
+        }
+        if (st.kind === "futures") {
+          var chips = "";
+          for (var f = 0; f < st.futures.length; f++) {
+            chips += '<div class="dd-future-chip">' + escapeHtml(st.futures[f]) + "</div>";
+          }
+          vis.innerHTML = '<div class="dd-futures-row">' + chips + "</div>";
+          return;
+        }
+        if (st.kind === "dists") {
+          var g = '<div class="dd-dist-grid">';
+          for (var r = 0; r < st.rows.length; r++) {
+            var R = st.rows[r];
+            g += '<div class="dd-future-dist"><h4>' + escapeHtml(R.label) + "</h4>";
+            for (var j = 0; j < R.bars.length; j++) g += barRow(j + 1, R.bars[j]);
+            g += "</div>";
+          }
+          g += "</div>";
+          vis.innerHTML = g;
+          return;
+        }
+        if (st.kind === "js") {
+          vis.innerHTML =
+            '<div><span class="dd-js-badge high">avg JS = ' +
+            st.jsAvg +
+            " &gt; τ = " +
+            st.tau +
+            '</span></div><div class="dd-gate-out read"><strong>DD outcome (toy): ' +
+            st.decision +
+            "</strong> Wait for more source before committing the contested Chinese token. Real runs: tune <code>--dd-tau</code>, <code>--dd-futures-k</code>, <code>--dd-steps</code>.</div>";
+          return;
+        }
+      }
+
+      document.getElementById("ddwBtnNext").addEventListener("click", function () {
+        if (ddwIdx < DDW_STEPS.length - 1) {
+          ddwIdx++;
+          renderDdw();
+        }
+      });
+      document.getElementById("ddwBtnPrev").addEventListener("click", function () {
+        if (ddwIdx > 0) {
+          ddwIdx--;
+          renderDdw();
+        }
+      });
+      document.getElementById("ddwBtnReset").addEventListener("click", function () {
+        if (ddwPlay) {
+          clearInterval(ddwPlay);
+          ddwPlay = null;
+          document.getElementById("ddwBtnPlay").textContent = "Play";
+        }
+        ddwIdx = 0;
+        renderDdw();
+      });
+      document.getElementById("ddwBtnPlay").addEventListener("click", function () {
+        var btn = document.getElementById("ddwBtnPlay");
+        if (ddwPlay) {
+          clearInterval(ddwPlay);
+          ddwPlay = null;
+          btn.textContent = "Play";
+          return;
+        }
+        btn.textContent = "Pause";
+        ddwPlay = setInterval(function () {
+          if (ddwIdx >= DDW_STEPS.length - 1) {
+            clearInterval(ddwPlay);
+            ddwPlay = null;
+            btn.textContent = "Play";
+            return;
+          }
+          ddwIdx++;
+          renderDdw();
+        }, 1400);
+      });
+
+      renderDdw();
+    })();
+
+    (function () {
+      function escapeHtmlLcp(s) {
+        var d = document.createElement("div");
+        d.textContent = s;
+        return d.innerHTML;
+      }
+
+      function inlineBoldLcp(s) {
+        return escapeHtmlLcp(s).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+      }
+
+      function zhChars(s) {
+        return s.split("");
+      }
+
+      function renderLcpHypRows(hyps, lcpLen) {
+        var html = '<div class="lcp-block">';
+        for (var h = 0; h < hyps.length; h++) {
+          var item = hyps[h];
+          var chars = zhChars(item.zh);
+          var row = '<div class="lcp-char-row">';
+          for (var i = 0; i < chars.length; i++) {
+            var cls = i < lcpLen ? "lcp-char-agree" : "lcp-char-defer";
+            row += '<span class="' + cls + '">' + escapeHtmlLcp(chars[i]) + "</span>";
+          }
+          row += "</div>";
+          html +=
+            '<div class="lcp-hyp"><div class="lcp-hyp-meta">' +
+            escapeHtmlLcp(item.label) +
+            '</div><div class="lcp-hyp-en">ZH:</div>' +
+            row +
+            "</div>";
+        }
+        html += "</div>";
+        return html;
+      }
+
+      var LCP_TRACE = [
+        {
+          kind: "text",
+          title: "Step 0 — Method 2: Future / literal LCP (not “semantic”)",
+          body:
+            "**Future / literal LCP** (implementation file **semantic_lcp_agent.py**): **Qwen3-4B-Base** proposes **K English futures**; **Qwen3-30B-Instruct** (served by **vLLM**, `--vllm-api-base`) returns **one Chinese string per future**. Python finds the **longest shared prefix of those Chinese strings** under a **quorum** (e.g. ≥60%). That literal prefix may extend **_committed** — tails that disagree stay **uncommitted**. **No NLLB** here; this LCP is on **character strings**, not embeddings.",
+        },
+        {
+          kind: "prefix",
+          title: "Step 1 — Observed English prefix (streaming ASR / text)",
+          body: "Only words already READ enter the prompt:",
+          en: "The river",
+        },
+        {
+          kind: "futures",
+          title: "Step 2 — Qwen3-4B-Base samples K English futures only",
+          body:
+            "Temperature sampling on the local **Qwen3-4B-Base** checkpoint (`--future-lm-path`). These futures are **English** — translation comes next step.",
+          futures: [
+            "The river was named after Maria.",
+            "The river flows to the sea.",
+            "The river is wide here.",
+            "The river flooded the town.",
+          ],
+        },
+        {
+          kind: "translations_preview",
+          title: "Step 3 — Qwen3-30B-Instruct (vLLM): one ZH hypothesis per future",
+          body:
+            "Each **full English string** (observed prefix + sampled continuation) is sent to the OpenAI-compatible vLLM endpoint for **Qwen3-30B-Instruct**. Toy output: first three **Chinese characters** match across rows; tails diverge.",
+          pairs: [
+            {
+              label: "Future 1 → ZH",
+              en: "The river was named after Maria.",
+              zh: "\u8fd9\u6761\u6cb3\u4ee5\u739b\u4e3d\u4e9a\u547d\u540d\u3002",
+            },
+            {
+              label: "Future 2 → ZH",
+              en: "The river flows to the sea.",
+              zh: "\u8fd9\u6761\u6cb3\u6d41\u5411\u5927\u6d77\u3002",
+            },
+            {
+              label: "Future 3 → ZH",
+              en: "The river is wide here.",
+              zh: "\u8fd9\u6761\u6cb3\u5728\u8fd9\u91cc\u5f88\u5bbd\u3002",
+            },
+            {
+              label: "Future 4 → ZH",
+              en: "The river flooded the town.",
+              zh: "\u8fd9\u6761\u6cb3\u6df9\u6ca1\u4e86\u57ce\u9547\u3002",
+            },
+          ],
+        },
+        {
+          kind: "lcp_highlight",
+          title: "Step 4 — Quorum on the literal Chinese LCP",
+          body:
+            "Green cells = **shared prefix** across hypotheses (here **这条河**, **3** characters). After that, **以 / 流 / 在 / 淹** disagree — **not** committed until more futures/source agree. Quorum in code: default **≥60%** of K futures; toy shows **4/4** agreement on the prefix.",
+          lcpLen: 3,
+          quorum: "4 / 4 hypotheses share the prefix — quorum satisfied.",
+          hyps: [
+            { label: "vLLM hyp 1", zh: "\u8fd9\u6761\u6cb3\u4ee5\u739b\u4e3d\u4e9a\u547d\u540d\u3002" },
+            { label: "vLLM hyp 2", zh: "\u8fd9\u6761\u6cb3\u6d41\u5411\u5927\u6d77\u3002" },
+            { label: "vLLM hyp 3", zh: "\u8fd9\u6761\u6cb3\u5728\u8fd9\u91cc\u5f88\u5bbd\u3002" },
+            { label: "vLLM hyp 4", zh: "\u8fd9\u6761\u6cb3\u6df9\u6ca1\u4e86\u57ce\u9547\u3002" },
+          ],
+        },
+        {
+          kind: "text",
+          title: "Step 5 — SimulEval WRITE: only the new safe prefix",
+          body:
+            "**WriteAction** emits only the **incremental** literal LCP beyond what was already committed (e.g. **这条河**'s new mass this turn). Disagreeing tails wait for the **next** multi-future solve.",
+        },
+        {
+          kind: "text",
+          title: "Step 6 — Contrast with Method 1",
+          body:
+            "**Method 1 (DD+JS)** reasons over **NLLB probability vectors** with futures from **Qwen3-4B-Base**. **Method 2** never calls NLLB — it merges **discrete Qwen3-30B-Instruct strings** with a **literal** longest-prefix quorum. Only Method 2 uses this LCP stage.",
+        },
+      ];
+
+      var lcpIdx = 0;
+      var flcpPlay = null;
+      var elLcpStepTitle = document.getElementById("flcpStepTitle");
+      var elLcpBody = document.getElementById("flcpNarrative");
+      var elLcpVis = document.getElementById("flcpVisual");
+      var elLcpCounter = document.getElementById("flcp-stepCounter");
+      var elLcpPrev = document.getElementById("flcpBtnPrev");
+      var elLcpNext = document.getElementById("flcpBtnNext");
+      var elLcpReset = document.getElementById("flcpBtnReset");
+      var elFlcpPlay = document.getElementById("flcpBtnPlay");
+
+      function renderLcp() {
+        var st = LCP_TRACE[lcpIdx];
+        elLcpStepTitle.textContent = st.title;
+        elLcpBody.innerHTML = inlineBoldLcp(st.body);
+        elLcpVis.innerHTML = "";
+
+        elLcpCounter.innerHTML =
+          "Step <strong>" +
+          lcpIdx +
+          "</strong> / <strong>" +
+          (LCP_TRACE.length - 1) +
+          "</strong>";
+        elLcpPrev.disabled = lcpIdx <= 0;
+        elLcpNext.disabled = lcpIdx >= LCP_TRACE.length - 1;
+
+        if (st.kind === "text") {
+          return;
+        }
+        if (st.kind === "prefix") {
+          elLcpVis.innerHTML =
+            '<p style="margin:0;font-family:var(--mono);font-size:1.05rem;"><strong>EN prefix:</strong> ' +
+            escapeHtmlLcp(st.en) +
+            "</p>";
+          return;
+        }
+        if (st.kind === "futures") {
+          var chips = "";
+          for (var f = 0; f < st.futures.length; f++) {
+            chips +=
+              '<div class="dd-future-chip">' +
+              escapeHtmlLcp(st.futures[f]) +
+              "</div>";
+          }
+          elLcpVis.innerHTML = '<div class="dd-futures-row">' + chips + "</div>";
+          return;
+        }
+        if (st.kind === "translations_preview") {
+          var blocks = '<div class="lcp-block">';
+          for (var p = 0; p < st.pairs.length; p++) {
+            var pr = st.pairs[p];
+            blocks +=
+              '<div class="lcp-hyp"><div class="lcp-hyp-meta">' +
+              escapeHtmlLcp(pr.label) +
+              '</div><div class="lcp-hyp-en">' +
+              escapeHtmlLcp(pr.en) +
+              '</div><div class="lcp-hyp-en" style="margin-top:0.25rem;color:#1a1d24;font-weight:500;">' +
+              escapeHtmlLcp(pr.zh) +
+              "</div></div>";
+          }
+          blocks += "</div>";
+          elLcpVis.innerHTML = blocks;
+          return;
+        }
+        if (st.kind === "lcp_highlight") {
+          elLcpVis.innerHTML =
+            renderLcpHypRows(st.hyps, st.lcpLen) +
+            '<div class="lcp-banner"><strong>Literal LCP (toy):</strong> ' +
+            escapeHtmlLcp(st.quorum) +
+            " Safe prefix this cycle: <strong>" +
+            escapeHtmlLcp("\u8fd9\u6761\u6cb3") +
+            "</strong> (3 characters).</div>";
+          return;
+        }
+      }
+
+      elLcpNext.addEventListener("click", function () {
+        if (lcpIdx < LCP_TRACE.length - 1) {
+          lcpIdx++;
+          renderLcp();
+        }
+      });
+      elLcpPrev.addEventListener("click", function () {
+        if (lcpIdx > 0) {
+          lcpIdx--;
+          renderLcp();
+        }
+      });
+      elLcpReset.addEventListener("click", function () {
+        if (flcpPlay) {
+          clearInterval(flcpPlay);
+          flcpPlay = null;
+          elFlcpPlay.textContent = "Play";
+        }
+        lcpIdx = 0;
+        renderLcp();
+      });
+      elFlcpPlay.addEventListener("click", function () {
+        if (flcpPlay) {
+          clearInterval(flcpPlay);
+          flcpPlay = null;
+          elFlcpPlay.textContent = "Play";
+          return;
+        }
+        elFlcpPlay.textContent = "Pause";
+        flcpPlay = setInterval(function () {
+          if (lcpIdx >= LCP_TRACE.length - 1) {
+            clearInterval(flcpPlay);
+            flcpPlay = null;
+            elFlcpPlay.textContent = "Play";
+            return;
+          }
+          lcpIdx++;
+          renderLcp();
+        }, 1400);
+      });
+
+      renderLcp();
+    })();
+
+    (function () {
+      function escSp(s) {
+        var d = document.createElement("div");
+        d.textContent = s;
+        return d.innerHTML;
+      }
+      function boldSp(s) {
+        return escSp(s).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+      }
+
+      var SP_STEPS = [
+        {
+          kind: "text",
+          title: "Step 0 — Why this matches “Streaming Speech Translation”",
+          body:
+            "Your proposal title stresses **streaming speech**. A **cascaded** design is standard: **speech → ASR → text**. Here, **openai/whisper-small** (default) transcribes each CoVoST utterance to **one English line**. That line becomes the **SimulEval `--source` file** — the same READ/WRITE interface as WMT19 text. This is **not** a single end-to-end neural **audio→Chinese** model; call it **cascaded ST** in the write-up.",
+        },
+        {
+          kind: "text",
+          title: "Step 1 — Dataset / mirror",
+          body:
+            "Script default: Hugging Face **`AudioLLMs/covost2_en_zh_test`** (parquet mirror of CoVoST EN→ZH test). Slice with **`--hf-split`** (e.g. **`test[:100]`** for the pilot). Audio in column **`context`**, Chinese reference in **`answer`**.",
+        },
+        {
+          kind: "text",
+          title: "Step 2 — Whisper ASR (English)",
+          body:
+            "**`prepare_covost_asr_texts.py`** loads **`AutoModelForSpeechSeq2Seq`** and runs the **automatic-speech-recognition** pipeline. Default model id: **`openai/whisper-small`**. Output: **`&lt;prefix&gt;_source_asr.txt`** — one ASR hypothesis per line, aligned with reference lines.",
+        },
+        {
+          kind: "text",
+          title: "Step 3 — Chinese references for SimulEval",
+          body:
+            "**`--target-format simul`** (default) formats ZH like **`wmt19_target.txt`**: **space-separated** tokens so **sacrebleu** matches the agent’s spaced **WriteAction** stream. Use **`format_zh_target_for_simul.py`** if you fix targets without re-running ASR.",
+        },
+        {
+          kind: "text",
+          title: "Step 4 — Plug in your four-method stack",
+          body:
+            "**`simuleval --source ..._source_asr.txt --target ..._target_zh.txt`** with **`agents/sttr_enzh_agent.py`** (Baselines 1–2, Method 1 DD+JS) or **`agents/semantic_lcp_agent.py`** (Method 2 Future LCP). Only the **source file** changes from clean text to ASR text; flags stay the same as your text experiments.",
+        },
+        {
+          kind: "text",
+          title: "Step 5 — Batch example (repo)",
+          body:
+            "**`scripts/run_covost_cascaded_nllb.sbatch`** runs ASR if the text files are missing, then **wait-k** NLLB with **`facebook/nllb-200-distilled-600M`**. Override **`HF_SPLIT`**, **`PREFIX`**, **`WHISPER`**, **`WAIT_K`** via **`sbatch --export=...`**.",
+        },
+        {
+          kind: "text",
+          title: "Step 6 — What to report",
+          body:
+            "Make clear: **ASR WER/CER** (or qualitative errors), **SimulEval BLEU / AL / LAAL** on ASR-fed source, and that **latency** stacks ASR time + translation policy. Compare **ASR vs oracle transcript** if you add an ablation later.",
+        },
+      ];
+
+      var spIdx = 0;
+      var spPlay = null;
+
+      function renderSp() {
+        var st = SP_STEPS[spIdx];
+        document.getElementById("spStepTitle").textContent = st.title;
+        document.getElementById("spNarrative").innerHTML = boldSp(st.body);
+        document.getElementById("spVisual").innerHTML = "";
+        document.getElementById("sp-stepCounter").innerHTML =
+          "Step <strong>" + spIdx + "</strong> / <strong>" + (SP_STEPS.length - 1) + "</strong>";
+        document.getElementById("spBtnPrev").disabled = spIdx <= 0;
+        document.getElementById("spBtnNext").disabled = spIdx >= SP_STEPS.length - 1;
+        var log = document.getElementById("spLog");
+        log.innerHTML = "";
+        for (var i = 0; i <= spIdx; i++) {
+          var row = document.createElement("div");
+          row.className = "log-line";
+          row.textContent = i + ". " + SP_STEPS[i].title;
+          log.appendChild(row);
+        }
+      }
+
+      document.getElementById("spBtnNext").addEventListener("click", function () {
+        if (spIdx < SP_STEPS.length - 1) {
+          spIdx++;
+          renderSp();
+        }
+      });
+      document.getElementById("spBtnPrev").addEventListener("click", function () {
+        if (spIdx > 0) {
+          spIdx--;
+          renderSp();
+        }
+      });
+      document.getElementById("spBtnReset").addEventListener("click", function () {
+        if (spPlay) {
+          clearInterval(spPlay);
+          spPlay = null;
+          document.getElementById("spBtnPlay").textContent = "Play";
+        }
+        spIdx = 0;
+        renderSp();
+      });
+      document.getElementById("spBtnPlay").addEventListener("click", function () {
+        var btn = document.getElementById("spBtnPlay");
+        if (spPlay) {
+          clearInterval(spPlay);
+          spPlay = null;
+          btn.textContent = "Play";
+          return;
+        }
+        btn.textContent = "Pause";
+        spPlay = setInterval(function () {
+          if (spIdx >= SP_STEPS.length - 1) {
+            clearInterval(spPlay);
+            spPlay = null;
+            btn.textContent = "Play";
+            return;
+          }
+          spIdx++;
+          renderSp();
+        }, 1400);
+      });
+
+      renderSp();
+    })();
+
+    (function () {
+      var tabBaseline = document.getElementById("tab-baseline");
+      var tabDd = document.getElementById("tab-dd");
+      var tabFlcp = document.getElementById("tab-flcp");
+      var tabSpeech = document.getElementById("tab-speech");
+      var panelBaseline = document.getElementById("panel-baseline");
+      var panelDd = document.getElementById("panel-dd");
+      var panelFlcp = document.getElementById("panel-flcp");
+      var panelSpeech = document.getElementById("panel-speech");
+
+      function activate(which) {
+        [tabBaseline, tabDd, tabFlcp, tabSpeech].forEach(function (t) {
+          t.setAttribute("aria-selected", "false");
+        });
+        [panelBaseline, panelDd, panelFlcp, panelSpeech].forEach(function (p) {
+          p.classList.remove("active");
+          p.hidden = true;
+        });
+        if (which === "baseline") {
+          tabBaseline.setAttribute("aria-selected", "true");
+          panelBaseline.classList.add("active");
+          panelBaseline.hidden = false;
+        } else if (which === "dd") {
+          tabDd.setAttribute("aria-selected", "true");
+          panelDd.classList.add("active");
+          panelDd.hidden = false;
+        } else if (which === "flcp") {
+          tabFlcp.setAttribute("aria-selected", "true");
+          panelFlcp.classList.add("active");
+          panelFlcp.hidden = false;
+        } else {
+          tabSpeech.setAttribute("aria-selected", "true");
+          panelSpeech.classList.add("active");
+          panelSpeech.hidden = false;
+        }
+      }
+
+      tabBaseline.addEventListener("click", function () {
+        activate("baseline");
+      });
+      tabDd.addEventListener("click", function () {
+        activate("dd");
+      });
+      tabFlcp.addEventListener("click", function () {
+        activate("flcp");
+      });
+      tabSpeech.addEventListener("click", function () {
+        activate("speech");
+      });
+
+      activate("baseline");
+    })();
+
+    (function () {
+      document.querySelectorAll(".method-toggle").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var expanded = btn.getAttribute("aria-expanded") === "true";
+          var id = btn.getAttribute("aria-controls");
+          var panel = id ? document.getElementById(id) : null;
+          var card = btn.closest(".method-card");
+          if (!panel) return;
+          btn.setAttribute("aria-expanded", String(!expanded));
+          panel.hidden = expanded;
+          if (card) card.classList.toggle("is-open", !expanded);
+        });
+      });
+    })();
+
+  </script>
+</body>
+</html>

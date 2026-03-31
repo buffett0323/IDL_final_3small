@@ -1,6 +1,16 @@
 """
 STTR-v2 simultaneous translation agent for EN->ZH.
 
+Commit / hypothesis note (SiMT semantics):
+By default, the NLLB path in this agent is **prefix-anchored**: once Chinese target
+characters have been committed, subsequent drafts and beam candidates are conditioned on
+that committed target prefix. This keeps the streaming policy aligned with simultaneous MT
+semantics: committed target text cannot change retroactively.
+
+Legacy full-prefix re-translation is still available behind
+``--retranslate-full-prefix`` for ablations only. For explicit ``_committed`` Chinese with
+quorum LCP over futures, use ``semantic_lcp_agent.py``.
+
 Extends wait-k with:
   - NLLB-200-distilled-600M as base model
   - Character-level Chinese emission
@@ -65,7 +75,16 @@ def _patched_summarize(self):
 Instance.summarize = _patched_summarize
 
 from simuleval.evaluator.scorers.latency_scorer import LatencyScorer
+import simuleval.evaluator.scorers.latency_scorer as _latency_scorer_module
+import statistics as _statistics
 from statistics import mean
+
+
+def _safe_latency_mean(seq):
+    return _statistics.mean(seq) if seq else 0.0
+
+
+_latency_scorer_module.mean = _safe_latency_mean
 
 
 def _patched_scorer_call(self, instances):
@@ -260,8 +279,13 @@ class STTREnZhAgent(TextToTextAgent):
         # Extra read tracking per sentence
         self._extra_reads_used = 0
 
-        # Prefix-constrained continuation mode
+        # Streaming modes:
+        #   - default: prefix-anchored drafting / beam candidates in the normal
+        #     DD + uncertainty + LCP pipeline
+        #   - --continuation: strict next-character continuation policy
+        #   - --retranslate-full-prefix: legacy ablation only
         self._continuation = args.continuation
+        self._retranslate_full_prefix = args.retranslate_full_prefix
         self._causal_instruct = args.causal_instruct
 
         # DD gate state
@@ -270,25 +294,23 @@ class STTREnZhAgent(TextToTextAgent):
         self._dd_tau = args.dd_tau
         self._dd_K = args.dd_futures_k
         self._dd_steps = args.dd_steps
-        self._dd_future_mode = args.dd_future_mode      # "oracle" | "lm_sample"
         self._dd_future_words = args.dd_future_words
         self._dd_future_temperature = args.dd_future_temperature
         self._dd_cache: dict[int, dict] = {}   # prefix_len -> dd result
         self._dd_forced_reads = 0              # total READ forced by DD this sentence
         self._dd_trace_path: Path | None = None
 
-        # Future LM for lm_sample mode: a small English causal LM that generates
-        # K plausible continuations of the current observed source prefix.
-        # This is loaded separately from the base MT model.
+        # English future LM: required when DD is on; samples K continuations from
+        # the observed prefix only (no reference-source oracle).
         self._future_lm = None
         self._future_lm_tokenizer = None
-        if self._dd_future_mode == "lm_sample" and (self._dd_enabled or self._dd_veto):
+        if self._dd_enabled or self._dd_veto:
             future_lm_path = args.dd_future_lm
             if not future_lm_path:
                 raise ValueError(
-                    "--dd-future-lm must be specified when --dd-future-mode=lm_sample"
+                    "--dd-future-lm is required when --dd-gate or --dd-veto is set "
+                    "(DD uses LM-sampled English futures only)."
                 )
-            # Determine device: separate GPU if specified, else same as base model
             if args.dd_future_lm_gpu is not None:
                 future_lm_device = f"cuda:{args.dd_future_lm_gpu}"
             else:
@@ -311,33 +333,9 @@ class STTREnZhAgent(TextToTextAgent):
             )
             self._future_lm.eval()
             print(
-                f"[DD-LM] Future LM loaded. Will generate K={self._dd_K} futures "
-                f"of {self._dd_future_words} tokens each, T={self._dd_future_temperature}"
+                f"[DD-LM] Future LM loaded. K={self._dd_K} futures × "
+                f"{self._dd_future_words} tokens, T={self._dd_future_temperature}"
             )
-
-        # Oracle source sentences (full sentences from the source file).
-        # Needed for truncation futures: the streaming agent only sees words
-        # 0..prefix_len-1, so without the full sentence all K futures are
-        # identical -> JS=0. Loading from the source file gives genuine future
-        # diversity and is the correct oracle upper-bound experiment.
-        self._dd_oracle_sources: list[list[str]] | None = None
-        if self._dd_enabled or self._dd_veto:
-            src_file = getattr(args, "source", None)
-            if src_file and Path(src_file).exists():
-                with open(src_file, encoding="utf-8") as fh:
-                    self._dd_oracle_sources = [
-                        line.strip().split() for line in fh if line.strip()
-                    ]
-                print(
-                    f"[DD] Loaded {len(self._dd_oracle_sources)} oracle source "
-                    f"sentences from {src_file}"
-                )
-            else:
-                print(
-                    "[DD] WARNING: --source not found; all truncation futures "
-                    "will be identical and JS will be 0. "
-                    "Pass --source to simuleval for proper DD computation."
-                )
 
         if args.trace_refinement and getattr(args, "output", None):
             self._trace_path = Path(args.output) / "refine_trace.jsonl"
@@ -482,25 +480,11 @@ class STTREnZhAgent(TextToTextAgent):
             ),
         )
         parser.add_argument(
-            "--dd-future-mode", type=str, default="oracle",
-            choices=["oracle", "lm_sample"],
-            help=(
-                "How to generate K English futures for DD computation.\n"
-                "'oracle' (default): deterministically reveals 1..K more words "
-                "from the FULL source sentence (upper-bound experiment).\n"
-                "'lm_sample': uses --dd-future-lm to sample K diverse continuations "
-                "of the current observed prefix — no oracle needed. "
-                "This is the realistic inference-time mode."
-            ),
-        )
-        parser.add_argument(
             "--dd-future-lm", type=str, default=None,
             help=(
-                "Path or HuggingFace model ID for the English future-sampling LM. "
-                "Required when --dd-future-mode=lm_sample. "
-                "Recommended: a small causal LM such as Qwen/Qwen3-4B (base). "
-                "This LM generates English continuations only; translation is "
-                "still done by the base MT model."
+                "Path or HuggingFace ID for the English future-sampling causal LM. "
+                "Required with --dd-gate or --dd-veto. Samples K continuations from "
+                "the observed prefix only (no oracle). E.g. Qwen3-4B-Base."
             ),
         )
         parser.add_argument(
@@ -524,14 +508,19 @@ class STTREnZhAgent(TextToTextAgent):
         parser.add_argument(
             "--continuation", action="store_true",
             help=(
-                "Enable prefix-constrained continuation mode.\n"
-                "Instead of re-translating the full source prefix and indexing "
-                "into the draft by position (translation[tgt_len]), this mode "
-                "explicitly conditions the decoder on the already-committed target "
-                "prefix via decoder_input_ids, then generates only what comes next.\n"
-                "This eliminates translation-hypothesis inconsistency: the committed "
-                "prefix is always respected and the model cannot 'forget' what was "
-                "already written.  Works only with seq2seq (NLLB) base models."
+                "Enable strict next-character continuation mode.\n"
+                "This bypasses the normal uncertainty / DD / LCP draft path and asks "
+                "the model directly for the next character conditioned on the already-"
+                "committed target prefix. Works only with seq2seq (NLLB) base models."
+            ),
+        )
+        parser.add_argument(
+            "--retranslate-full-prefix", action="store_true",
+            help=(
+                "Legacy ablation only. Re-enable the old behavior that re-translates "
+                "the full observed source prefix at every step and indexes into the "
+                "new hypothesis by target position. Disabled by default because "
+                "committed target text should remain immutable in streaming MT."
             ),
         )
 
@@ -819,37 +808,8 @@ class STTREnZhAgent(TextToTextAgent):
             )
 
         committed_text = "".join(committed)
-
-        # ── Encoder: cache by source_text to avoid redundant encoding ──────────
-        if source_text not in self._cont_enc_cache:
-            raw_inputs = self.tokenizer(
-                source_text, return_tensors="pt", padding=True, truncation=True
-            ).to(self.device)
-            with torch.no_grad():
-                encoder = self.model.get_encoder()
-                enc_out = encoder(
-                    input_ids=raw_inputs["input_ids"],
-                    attention_mask=raw_inputs["attention_mask"],
-                    return_dict=True,
-                )
-            # Keep only the latest source prefix to bound memory usage
-            self._cont_enc_cache = {source_text: enc_out}
-            self._cont_attn_cache = {source_text: raw_inputs["attention_mask"]}
-
-        enc_out = self._cont_enc_cache[source_text]
-        attn_mask = self._cont_attn_cache[source_text]
-
-        # ── Decoder prefix: [decoder_start, lang_token, *committed_tokens] ─────
-        if committed_text:
-            committed_ids = self.tokenizer(
-                committed_text, add_special_tokens=False
-            ).input_ids
-        else:
-            committed_ids = []
-
-        decoder_start = self.model.config.decoder_start_token_id
-        decoder_prefix_ids = [decoder_start, self.forced_bos_token_id] + committed_ids
-        decoder_prefix = torch.tensor([decoder_prefix_ids]).to(self.device)
+        enc_out, attn_mask = self._get_seq2seq_encoder_cache(source_text)
+        decoder_prefix = self._build_seq2seq_decoder_prefix(committed_text)
 
         # ── Generate continuation ────────────────────────────────────────────────
         with torch.no_grad():
@@ -952,6 +912,9 @@ class STTREnZhAgent(TextToTextAgent):
 
     def _draft_seq2seq(self, source_text: str):
         """Draft generation for seq2seq models (NLLB etc.)."""
+        if not self._retranslate_full_prefix:
+            return self._draft_seq2seq_prefix_anchored(source_text)
+
         inputs = self.tokenizer(
             source_text, return_tensors="pt", padding=True, truncation=True
         ).to(self.device)
@@ -969,19 +932,88 @@ class STTREnZhAgent(TextToTextAgent):
             outputs = self.model.generate(**gen_kwargs)
 
         entropies, margins, chosen_log_probs = [], [], []
-        for step_idx, step_logits in enumerate(outputs.scores):
+        generated_ids = outputs.sequences[0][1:]
+        for step_idx, step_logits in enumerate(outputs.scores[: len(generated_ids)]):
             probs = F.softmax(step_logits[0], dim=-1)
             log_probs_dist = F.log_softmax(step_logits[0], dim=-1)
             entropy = -(probs * log_probs_dist).sum().item()
             entropies.append(entropy)
             top2 = probs.topk(2).values
             margins.append((top2[0] - top2[1]).item())
-            chosen_id = outputs.sequences[0][step_idx + 1].item()
+            chosen_id = generated_ids[step_idx].item()
             chosen_log_probs.append(log_probs_dist[chosen_id].item())
 
         uncertainty = self._aggregate_uncertainty(entropies, margins, chosen_log_probs)
         translated = self.tokenizer.decode(outputs.sequences[0], skip_special_tokens=True)
         return split_chinese_chars(translated), uncertainty
+
+    def _get_seq2seq_encoder_cache(self, source_text: str):
+        """Return cached encoder outputs for the current source prefix."""
+        if source_text not in self._cont_enc_cache:
+            raw_inputs = self.tokenizer(
+                source_text, return_tensors="pt", padding=True, truncation=True
+            ).to(self.device)
+            with torch.no_grad():
+                encoder = self.model.get_encoder()
+                enc_out = encoder(
+                    input_ids=raw_inputs["input_ids"],
+                    attention_mask=raw_inputs["attention_mask"],
+                    return_dict=True,
+                )
+            # Keep only the latest source prefix to bound memory usage.
+            self._cont_enc_cache = {source_text: enc_out}
+            self._cont_attn_cache = {source_text: raw_inputs["attention_mask"]}
+        return self._cont_enc_cache[source_text], self._cont_attn_cache[source_text]
+
+    def _build_seq2seq_decoder_prefix(self, committed_text: str) -> torch.Tensor:
+        """Build decoder prefix [decoder_start, lang_token, committed_ids]."""
+        if committed_text:
+            committed_ids = self.tokenizer(
+                committed_text, add_special_tokens=False
+            ).input_ids
+        else:
+            committed_ids = []
+        decoder_start = self.model.config.decoder_start_token_id
+        decoder_prefix_ids = [decoder_start, self.forced_bos_token_id] + committed_ids
+        return torch.tensor([decoder_prefix_ids], device=self.device)
+
+    def _draft_seq2seq_prefix_anchored(self, source_text: str):
+        """Generate a draft suffix conditioned on the committed target prefix."""
+        committed = list(self.states.target) if self.states.target else []
+        committed_text = "".join(committed)
+        enc_out, attn_mask = self._get_seq2seq_encoder_cache(source_text)
+        decoder_prefix = self._build_seq2seq_decoder_prefix(committed_text)
+        prefix_len = decoder_prefix.shape[1]
+
+        with torch.no_grad():
+            outputs = self.model.generate(
+                encoder_outputs=enc_out,
+                attention_mask=attn_mask,
+                decoder_input_ids=decoder_prefix,
+                forced_bos_token_id=None,
+                num_beams=self.args.beam_size,
+                max_new_tokens=96,
+                output_scores=True,
+                return_dict_in_generate=True,
+            )
+
+        entropies, margins, chosen_log_probs = [], [], []
+        generated_ids = outputs.sequences[0][prefix_len:]
+        for step_idx, step_logits in enumerate(outputs.scores[: len(generated_ids)]):
+            probs = F.softmax(step_logits[0], dim=-1)
+            log_probs_dist = F.log_softmax(step_logits[0], dim=-1)
+            entropy = -(probs * log_probs_dist).sum().item()
+            entropies.append(entropy)
+            top2 = probs.topk(2).values
+            margins.append((top2[0] - top2[1]).item())
+            chosen_id = generated_ids[step_idx].item()
+            chosen_log_probs.append(log_probs_dist[chosen_id].item())
+
+        uncertainty = self._aggregate_uncertainty(entropies, margins, chosen_log_probs)
+        new_ids = generated_ids
+        continuation_text = self.tokenizer.decode(new_ids, skip_special_tokens=True)
+        continuation_units = split_chinese_chars(continuation_text)
+        return list(committed) + continuation_units, uncertainty
 
     def _draft_causal(self, source_text: str):
         """Draft generation for causal / decoder-only LMs (e.g. Qwen3-4B-Base).
@@ -1008,20 +1040,21 @@ class STTREnZhAgent(TextToTextAgent):
 
         # Uncertainty comes from the generated (Chinese) tokens only
         entropies, margins, chosen_log_probs = [], [], []
-        for step_idx, step_logits in enumerate(outputs.scores):
+        generated_ids = outputs.sequences[0][prompt_len:]
+        for step_idx, step_logits in enumerate(outputs.scores[: len(generated_ids)]):
             probs = F.softmax(step_logits[0], dim=-1)
             log_probs_dist = F.log_softmax(step_logits[0], dim=-1)
             entropy = -(probs * log_probs_dist).sum().item()
             entropies.append(entropy)
             top2 = probs.topk(2).values
             margins.append((top2[0] - top2[1]).item())
-            chosen_id = outputs.sequences[0][prompt_len + step_idx].item()
+            chosen_id = generated_ids[step_idx].item()
             chosen_log_probs.append(log_probs_dist[chosen_id].item())
 
         uncertainty = self._aggregate_uncertainty(entropies, margins, chosen_log_probs)
 
         # Decode only new tokens (the Chinese translation)
-        new_ids = outputs.sequences[0][prompt_len:]
+        new_ids = generated_ids
         translated = self.tokenizer.decode(new_ids, skip_special_tokens=True).strip()
 
         # Stop at double newline — the model may start the next few-shot example
@@ -1100,38 +1133,21 @@ class STTREnZhAgent(TextToTextAgent):
     # ------------------------------------------------------------------
 
     def _dd_cached_score(self, prefix_len: int) -> dict:
-        """Return cached DD score for current source prefix length.
-
-        Recomputed only when prefix_len changes (new source word arrived).
-
-        Uses oracle_source_words (full sentence loaded at startup) so that
-        truncation futures are genuinely diverse.  Falls back to observed
-        prefix if oracle is unavailable (will give JS=0 for most steps).
-        """
+        """Return cached DD score for current source prefix length (LM futures only)."""
         if prefix_len not in self._dd_cache:
-            # _sentence_id is incremented once during super().__init__() and once
-            # per sentence start by SimulEval.  So during sentence 1 it is 1,
-            # during sentence 2 it is 2, etc.  Subtract 1 for 0-based indexing.
-            oracle_idx = self._sentence_id - 1
-            if (self._dd_oracle_sources is not None
-                    and 0 <= oracle_idx < len(self._dd_oracle_sources)):
-                oracle_words = self._dd_oracle_sources[oracle_idx]
-            else:
-                # Fallback: only observed prefix — futures will be identical
-                oracle_words = list(self.states.source)
-
+            words = list(self.states.source)
+            if len(words) != prefix_len:
+                words = words[:prefix_len]
             self._dd_cache[prefix_len] = compute_dd_score(
                 model=self.model,
                 tokenizer=self.tokenizer,
-                oracle_source_words=oracle_words,
-                prefix_len=prefix_len,
+                prefix_words=words,
                 device=self.device,
                 causal_lm=self._causal_lm,
                 forced_bos_token_id=self.forced_bos_token_id,
                 prompt_template=self._causal_prompt_template,
                 K=self._dd_K,
                 n_steps=self._dd_steps,
-                future_mode=self._dd_future_mode,
                 future_lm=self._future_lm,
                 future_lm_tokenizer=self._future_lm_tokenizer,
                 future_words=self._dd_future_words,
@@ -1177,7 +1193,7 @@ class STTREnZhAgent(TextToTextAgent):
             "decision": decision,
             "baseline_decision": "COMMIT",  # baseline always commits post-wait-k
             "futures": dd_result.get("futures", []),
-            "future_mode": dd_result.get("future_mode", self._dd_future_mode),
+            "future_mode": dd_result.get("future_mode", "lm_sample"),
         }
         with self._dd_trace_path.open("a", encoding="utf-8") as f:
             f.write(json.dumps(record, ensure_ascii=False) + "\n")
@@ -1218,26 +1234,51 @@ class STTREnZhAgent(TextToTextAgent):
                 ).strip().split("\n")[0].strip()
                 candidates.append(split_chinese_chars(text))
         else:
-            inputs = self.tokenizer(
-                source_text, return_tensors="pt", padding=True, truncation=True
-            ).to(self.device)
+            if self._retranslate_full_prefix:
+                inputs = self.tokenizer(
+                    source_text, return_tensors="pt", padding=True, truncation=True
+                ).to(self.device)
 
-            with torch.no_grad():
-                outputs = self.model.generate(
-                    **build_generate_kwargs(
-                        self.forced_bos_token_id,
-                        **inputs,
+                with torch.no_grad():
+                    outputs = self.model.generate(
+                        **build_generate_kwargs(
+                            self.forced_bos_token_id,
+                            **inputs,
+                            num_beams=K * 2,
+                            num_return_sequences=K,
+                            max_length=512,
+                            do_sample=False,
+                        )
+                    )
+
+                candidates = []
+                for seq in outputs:
+                    text = self.tokenizer.decode(seq, skip_special_tokens=True)
+                    candidates.append(split_chinese_chars(text))
+            else:
+                committed = list(self.states.target) if self.states.target else []
+                committed_text = "".join(committed)
+                enc_out, attn_mask = self._get_seq2seq_encoder_cache(source_text)
+                decoder_prefix = self._build_seq2seq_decoder_prefix(committed_text)
+                prefix_len = decoder_prefix.shape[1]
+
+                with torch.no_grad():
+                    outputs = self.model.generate(
+                        encoder_outputs=enc_out,
+                        attention_mask=attn_mask,
+                        decoder_input_ids=decoder_prefix,
+                        forced_bos_token_id=None,
                         num_beams=K * 2,
                         num_return_sequences=K,
-                        max_length=512,
+                        max_new_tokens=96,
                         do_sample=False,
                     )
-                )
 
-            candidates = []
-            for seq in outputs:
-                text = self.tokenizer.decode(seq, skip_special_tokens=True)
-                candidates.append(split_chinese_chars(text))
+                candidates = []
+                for seq in outputs:
+                    new_ids = seq[prefix_len:]
+                    text = self.tokenizer.decode(new_ids, skip_special_tokens=True)
+                    candidates.append(list(committed) + split_chinese_chars(text))
 
         return candidates
 
