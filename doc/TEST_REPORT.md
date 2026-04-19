@@ -49,7 +49,7 @@
 However, this is largely because NLLB is a weak model — Qwen30B essentially **replaces** the
 translation rather than polishing it. Note that NLLB + Qwen30B (70.63) is still **worse** than
 Qwen4B alone (73.42), meaning the gain reflects the quality gap between the models, not the
-refinement strategy itself.
+
 
 ### 2B. Qwen3-4B-Base Base Model
 
