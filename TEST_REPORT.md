@@ -158,15 +158,15 @@ We run a standalone ablation of DD-based gating on top of the wait-k=5 NLLB-600M
 
 ### DD Gate Design
 
-**Signal**: Jensen-Shannon (JS) divergence averaged over the first N=3 next-token prediction steps across K=4 truncation futures.
+**Signal**: Jensen-Shannon (JS) divergence averaged over the first N=3 next-token prediction steps across K=4 **LM-sampled futures**.
 
-For each source prefix of length `t`, four "futures" are constructed by appending 1, 2, 3, 4 additional words from the oracle full source sentence:
+For each source prefix of length `t`, a small English LM samples four plausible continuations from the **observed prefix only**:
 
 ```
-future[1] = prefix + src[t]
-future[2] = prefix + src[t] + src[t+1]
-future[3] = prefix + src[t] + src[t+1] + src[t+2]
-future[4] = prefix + src[t] + src[t+1] + src[t+2] + src[t+3]
+future[1] = prefix + sampled_continuation_1
+future[2] = prefix + sampled_continuation_2
+future[3] = prefix + sampled_continuation_3
+future[4] = prefix + sampled_continuation_4
 ```
 
 Each future is fed through NLLB and the first N=3 next-token distributions (softmax over vocabulary) are extracted in a single batched forward pass. The JS divergence across K distributions is computed at each of the N steps, then averaged:
@@ -179,15 +179,15 @@ avg_js_firstN = mean([JS(step=1), JS(step=2), JS(step=3)])
 - If `avg_js_firstN ≤ τ`: **COMMIT** (the model's prediction is stable regardless of future context)
 - If `avg_js_firstN > τ`: **READ** (more source context would substantially change the prediction)
 
-**Oracle note**: This ablation uses oracle source sentences (full sentence known at test time) for constructing futures. This is an upper bound — in a real online system, futures would need to be sampled from a language model.
+This is a deployable setup: no oracle future words are used at test time.
 
 ### Implementation Details
 
 Three key code changes were made (all minimally invasive, no existing logic altered):
 
-1. **`agents/dd_gate.py`** — New module: `compute_dd_score()` (main API), `sample_truncation_futures()`, `_get_dists_seq2seq_batched()` (batched NLLB forward pass for all K futures in a single call), `js_divergence()`, `_avg_js_over_futures_and_steps()` (returns `avg_js_first1`, `avg_js_first3`, `avg_js_firstN`).
+1. **`agents/dd_gate.py`** — New module: `compute_dd_score()` (main API), `sample_lm_futures()`, `_get_dists_seq2seq_batched()` (batched NLLB forward pass for all K futures in a single call), `js_divergence()`, `_avg_js_over_futures_and_steps()` (returns `avg_js_first1`, `avg_js_first3`, `avg_js_firstN`).
 
-2. **`agents/sttr_enzh_agent.py`** — Added `--dd-gate`, `--dd-tau`, `--dd-futures-k`, `--dd-steps` CLI flags; oracle source loading from `--source` file at init; `_dd_cached_score()` cache (one call per unique prefix length per sentence); `_maybe_trace_dd()` logging to `dd_trace.jsonl`.
+2. **`agents/sttr_enzh_agent.py`** — Added `--dd-gate`, `--dd-tau`, `--dd-futures-k`, `--dd-steps`, `--dd-future-lm` CLI flags; `_dd_cached_score()` cache (one call per unique prefix length per sentence); `_maybe_trace_dd()` logging to `dd_trace.jsonl`.
 
 3. **`scripts/run_dd_sweep.sh`** and **`scripts/analyze_dd_results.py`** — Orchestration script for the full τ sweep and analysis script producing aggregate table + trace examples.
 

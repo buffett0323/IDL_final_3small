@@ -30,8 +30,12 @@ def load_translation_model(
 ):
     """Load a Hugging Face seq2seq translation model with optional lang codes."""
     cache = cache_dir or DEFAULT_CACHE_DIR
-    tokenizer = AutoTokenizer.from_pretrained(model_name, cache_dir=cache)
-    model = AutoModelForSeq2SeqLM.from_pretrained(model_name, cache_dir=cache)
+    tokenizer = AutoTokenizer.from_pretrained(
+        model_name, cache_dir=cache, local_files_only=True
+    )
+    model = AutoModelForSeq2SeqLM.from_pretrained(
+        model_name, cache_dir=cache, local_files_only=True
+    )
     model.eval()
     model.to(device)
 
@@ -59,13 +63,17 @@ def load_causal_translation_model(model_name_or_path, device, cache_dir=None):
     """
     cache = cache_dir or DEFAULT_CACHE_DIR
     tokenizer = AutoTokenizer.from_pretrained(
-        model_name_or_path, cache_dir=cache, trust_remote_code=True
+        model_name_or_path,
+        cache_dir=cache,
+        trust_remote_code=True,
+        local_files_only=True,
     )
     model = AutoModelForCausalLM.from_pretrained(
         model_name_or_path,
         cache_dir=cache,
         dtype="auto",
         trust_remote_code=True,
+        local_files_only=True,
     )
     model.eval()
     model.to(device)

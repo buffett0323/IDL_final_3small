@@ -205,3 +205,36 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# ===== Project-specific (added for cleanup) =====
+
+# Experiment outputs: too large for GitHub (~220 MB); keep only summaries
+outputs/*
+!outputs/ALL_RESULTS.md
+!outputs/comet_scores.md
+!outputs/comet_scores.csv
+!outputs/slide_figures/
+!outputs/slide_figures/**
+!outputs/_demo_trace_sid88.json
+
+# Archived obsolete code
+scripts/_obsolete/
+
+# LaTeX build artefacts (keep only .tex / .sty / figures/)
+IDL_three_small_final_report/*.aux
+IDL_three_small_final_report/*.log
+IDL_three_small_final_report/*.out
+IDL_three_small_final_report/*.pdf
+IDL_three_small_final_report/*.synctex.gz
+IDL_three_small_final_report/*.toc
+IDL_three_small_final_report/*.bbl
+IDL_three_small_final_report/*.blg
+IDL_three_small_final_report/*.fls
+IDL_three_small_final_report/*.fdb_latexmk
+
+# Torch inductor cache (regenerates on first run)
+torchinductor_haolingp/
+
+# IDE / editor scraps
+.codex
+

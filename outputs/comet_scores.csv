@@ -1,0 +1,7 @@
+experiment,data_slice,n,comet_score
+tc_ablation/tc_k5_K10_top10,rand100,100,0.849462
+tc_ablation/tc_k5_K10_top20,rand100,100,0.847695
+tc_ablation/tc_k5_K10_top5,rand100,100,0.850690
+tc_ablation/tc_k5_K15_top10,rand100,100,0.852988
+tc_ablation/tc_k5_K4_top10,rand100,100,0.847251
+tc_ablation/tc_k5_K6_top10,rand100,100,0.850525

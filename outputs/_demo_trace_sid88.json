@@ -1,0 +1,2679 @@
+{
+  "sentence_id": 88,
+  "full_source": "He was the fourth child in a family with six children.",
+  "full_reference": "他是一个有六个孩子的家庭的第四个孩子。",
+  "final_prediction": "他是家中六个孩子中的第四个。",
+  "audio_file": "audio/sid88.wav",
+  "audio_duration_s": 5.45,
+  "policy_calls": [
+    {
+      "observed_src": "He was the fourth child",
+      "committed_before": "",
+      "futures": [
+        "of John Wilmot, 1st Earl of Rochester, and...",
+        "(and fifth in name order) of John Quincy...",
+        "of Joseph Smith, Jr., the founder of The...",
+        "(and second son) of Louis Hébert and Henriette...",
+        "(and first born son) of the noted Polish...",
+        ", three years younger than his sister and...",
+        "of the family and his siblings included the...",
+        "and only son of Sir John Bowyer, 2nd...",
+        "born to the late Joe and Grace McNeely....",
+        "of 10 but his mother was so overworked..."
+      ],
+      "steps": [
+        {
+          "step": 1,
+          "target_prefix": "",
+          "per_future_topk": [
+            [
+              {
+                "text": "他是",
+                "prob": 0.999
+              },
+              {
+                "text": "他",
+                "prob": 0.0
+              },
+              {
+                "text": "约翰",
+                "prob": 0.0
+              },
+              {
+                "text": "他曾",
+                "prob": 0.0
+              },
+              {
+                "text": "这是",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "他是",
+                "prob": 0.992
+              },
+              {
+                "text": "约翰",
+                "prob": 0.007
+              },
+              {
+                "text": "他",
+                "prob": 0.001
+              },
+              {
+                "text": "他曾",
+                "prob": 0.0
+              },
+              {
+                "text": "亚",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "他是",
+                "prob": 0.939
+              },
+              {
+                "text": "他",
+                "prob": 0.06
+              },
+              {
+                "text": "他曾",
+                "prob": 0.001
+              },
+              {
+                "text": "约",
+                "prob": 0.0
+              },
+              {
+                "text": "祂",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "他是",
+                "prob": 0.999
+              },
+              {
+                "text": "他",
+                "prob": 0.001
+              },
+              {
+                "text": "他曾",
+                "prob": 0.0
+              },
+              {
+                "text": "路",
+                "prob": 0.0
+              },
+              {
+                "text": "洛",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "他是",
+                "prob": 1.0
+              },
+              {
+                "text": "他",
+                "prob": 0.0
+              },
+              {
+                "text": "他曾",
+                "prob": 0.0
+              },
+              {
+                "text": "作为",
+                "prob": 0.0
+              },
+              {
+                "text": "是",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "他是",
+                "prob": 0.998
+              },
+              {
+                "text": "他",
+                "prob": 0.002
+              },
+              {
+                "text": "她是",
+                "prob": 0.0
+              },
+              {
+                "text": "他的",
+                "prob": 0.0
+              },
+              {
+                "text": "他曾",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "他是",
+                "prob": 1.0
+              },
+              {
+                "text": "他",
+                "prob": 0.0
+              },
+              {
+                "text": "作为",
+                "prob": 0.0
+              },
+              {
+                "text": "家庭",
+                "prob": 0.0
+              },
+              {
+                "text": "他们是",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "他是",
+                "prob": 1.0
+              },
+              {
+                "text": "他",
+                "prob": 0.0
+              },
+              {
+                "text": "是",
+                "prob": 0.0
+              },
+              {
+                "text": "他曾",
+                "prob": 0.0
+              },
+              {
+                "text": "她是",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "他是",
+                "prob": 0.991
+              },
+              {
+                "text": "他",
+                "prob": 0.009
+              },
+              {
+                "text": "他曾",
+                "prob": 0.0
+              },
+              {
+                "text": "他的",
+                "prob": 0.0
+              },
+              {
+                "text": "乔",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "他是",
+                "prob": 0.989
+              },
+              {
+                "text": "他",
+                "prob": 0.011
+              },
+              {
+                "text": "十个",
+                "prob": 0.0
+              },
+              {
+                "text": "她是",
+                "prob": 0.0
+              },
+              {
+                "text": "第十",
+                "prob": 0.0
+              }
+            ]
+          ],
+          "intersection": [
+            42411,
+            104878
+          ],
+          "avg_prob": 0.991,
+          "selected_text": "他是",
+          "decision": "APPEND",
+          "reason": ""
+        },
+        {
+          "step": 2,
+          "target_prefix": "他是",
+          "per_future_topk": [
+            [
+              {
+                "text": "约翰",
+                "prob": 0.992
+              },
+              {
+                "text": "第一",
+                "prob": 0.008
+              },
+              {
+                "text": "约",
+                "prob": 0.0
+              },
+              {
+                "text": "第三代",
+                "prob": 0.0
+              },
+              {
+                "text": "第四",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "约翰",
+                "prob": 0.991
+              },
+              {
+                "text": "约",
+                "prob": 0.008
+              },
+              {
+                "text": "約",
+                "prob": 0.001
+              },
+              {
+                "text": "小",
+                "prob": 0.0
+              },
+              {
+                "text": "老",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "约",
+                "prob": 0.835
+              },
+              {
+                "text": "小",
+                "prob": 0.145
+              },
+              {
+                "text": "乔",
+                "prob": 0.011
+              },
+              {
+                "text": "耶稣",
+                "prob": 0.003
+              },
+              {
+                "text": "老",
+                "prob": 0.002
+              }
+            ],
+            [
+              {
+                "text": "路",
+                "prob": 1.0
+              },
+              {
+                "text": "洛",
+                "prob": 0.0
+              },
+              {
+                "text": "勒",
+                "prob": 0.0
+              },
+              {
+                "text": "卢",
+                "prob": 0.0
+              },
+              {
+                "text": "罗",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "著名",
+                "prob": 0.622
+              },
+              {
+                "text": "著名的",
+                "prob": 0.377
+              },
+              {
+                "text": "波兰",
+                "prob": 0.001
+              },
+              {
+                "text": "著",
+                "prob": 0.0
+              },
+              {
+                "text": "着",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "家",
+                "prob": 0.541
+              },
+              {
+                "text": "家中",
+                "prob": 0.421
+              },
+              {
+                "text": "四个",
+                "prob": 0.021
+              },
+              {
+                "text": "家里",
+                "prob": 0.016
+              },
+              {
+                "text": "第四",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "家",
+                "prob": 0.667
+              },
+              {
+                "text": "家中",
+                "prob": 0.315
+              },
+              {
+                "text": "家里",
+                "prob": 0.016
+              },
+              {
+                "text": "家庭",
+                "prob": 0.001
+              },
+              {
+                "text": "这个",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "第二",
+                "prob": 0.842
+              },
+              {
+                "text": "爵士",
+                "prob": 0.146
+              },
+              {
+                "text": "约翰",
+                "prob": 0.011
+              },
+              {
+                "text": "爵",
+                "prob": 0.001
+              },
+              {
+                "text": "第三代",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "已",
+                "prob": 1.0
+              },
+              {
+                "text": "乔",
+                "prob": 0.0
+              },
+              {
+                "text": "故",
+                "prob": 0.0
+              },
+              {
+                "text": "去世",
+                "prob": 0.0
+              },
+              {
+                "text": "晚期",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "十个",
+                "prob": 0.986
+              },
+              {
+                "text": "十",
+                "prob": 0.014
+              },
+              {
+                "text": "1",
+                "prob": 0.0
+              },
+              {
+                "text": "第十",
+                "prob": 0.0
+              },
+              {
+                "text": "家",
+                "prob": 0.0
+              }
+            ]
+          ],
+          "intersection": [],
+          "avg_prob": null,
+          "selected_text": "",
+          "decision": "READ",
+          "reason": "empty_intersection"
+        }
+      ],
+      "delta": "他是",
+      "stop_reason": "empty_intersection"
+    },
+    {
+      "observed_src": "He was the fourth child in a",
+      "committed_before": "他是",
+      "futures": [
+        "family of six to be born in the...",
+        "family of five. His four brothers and sisters...",
+        "family of seven brothers and sisters. In 1608...",
+        "family of five. He and his three brothers...",
+        "family of five. Given that the answer to...",
+        "family of 11, 5 of whom became professional...",
+        "Catholic family that hailed from a farming community...",
+        "family that also included an older brother and...",
+        "family of seven, born a month after the...",
+        "family of 16. The family moved 16 times,..."
+      ],
+      "steps": [
+        {
+          "step": 1,
+          "target_prefix": "他是",
+          "per_future_topk": [
+            [
+              {
+                "text": "1",
+                "prob": 0.953
+              },
+              {
+                "text": "这个",
+                "prob": 0.017
+              },
+              {
+                "text": "家中",
+                "prob": 0.009
+              },
+              {
+                "text": "六",
+                "prob": 0.007
+              },
+              {
+                "text": "家",
+                "prob": 0.003
+              }
+            ],
+            [
+              {
+                "text": "五个",
+                "prob": 0.348
+              },
+              {
+                "text": "家中",
+                "prob": 0.348
+              },
+              {
+                "text": "家",
+                "prob": 0.165
+              },
+              {
+                "text": "五",
+                "prob": 0.078
+              },
+              {
+                "text": "家里",
+                "prob": 0.061
+              }
+            ],
+            [
+              {
+                "text": "七个",
+                "prob": 0.932
+              },
+              {
+                "text": "七",
+                "prob": 0.06
+              },
+              {
+                "text": "家中",
+                "prob": 0.005
+              },
+              {
+                "text": "家",
+                "prob": 0.003
+              },
+              {
+                "text": "家里",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "五个",
+                "prob": 0.362
+              },
+              {
+                "text": "家中",
+                "prob": 0.362
+              },
+              {
+                "text": "五",
+                "prob": 0.133
+              },
+              {
+                "text": "家",
+                "prob": 0.104
+              },
+              {
+                "text": "家里",
+                "prob": 0.038
+              }
+            ],
+            [
+              {
+                "text": "五个",
+                "prob": 0.337
+              },
+              {
+                "text": "家中",
+                "prob": 0.337
+              },
+              {
+                "text": "家",
+                "prob": 0.205
+              },
+              {
+                "text": "家里",
+                "prob": 0.075
+              },
+              {
+                "text": "五",
+                "prob": 0.046
+              }
+            ],
+            [
+              {
+                "text": "家中",
+                "prob": 0.807
+              },
+              {
+                "text": "家",
+                "prob": 0.075
+              },
+              {
+                "text": "1",
+                "prob": 0.058
+              },
+              {
+                "text": "家里",
+                "prob": 0.052
+              },
+              {
+                "text": "十一",
+                "prob": 0.004
+              }
+            ],
+            [
+              {
+                "text": "来自",
+                "prob": 0.934
+              },
+              {
+                "text": "德国",
+                "prob": 0.025
+              },
+              {
+                "text": "出生于",
+                "prob": 0.015
+              },
+              {
+                "text": "天",
+                "prob": 0.013
+              },
+              {
+                "text": "德",
+                "prob": 0.009
+              }
+            ],
+            [
+              {
+                "text": "家中",
+                "prob": 0.824
+              },
+              {
+                "text": "家里",
+                "prob": 0.143
+              },
+              {
+                "text": "家",
+                "prob": 0.032
+              },
+              {
+                "text": "家庭",
+                "prob": 0.0
+              },
+              {
+                "text": "这个",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "七个",
+                "prob": 0.801
+              },
+              {
+                "text": "家",
+                "prob": 0.084
+              },
+              {
+                "text": "家中",
+                "prob": 0.066
+              },
+              {
+                "text": "七",
+                "prob": 0.04
+              },
+              {
+                "text": "家里",
+                "prob": 0.009
+              }
+            ],
+            [
+              {
+                "text": "1",
+                "prob": 0.604
+              },
+              {
+                "text": "十六",
+                "prob": 0.222
+              },
+              {
+                "text": "家中",
+                "prob": 0.105
+              },
+              {
+                "text": "家里",
+                "prob": 0.039
+              },
+              {
+                "text": "家",
+                "prob": 0.023
+              }
+            ]
+          ],
+          "intersection": [],
+          "avg_prob": null,
+          "selected_text": "",
+          "decision": "READ",
+          "reason": "empty_intersection"
+        }
+      ],
+      "delta": "",
+      "stop_reason": "empty_intersection"
+    },
+    {
+      "observed_src": "He was the fourth child in a family",
+      "committed_before": "他是",
+      "futures": [
+        "of six boys and three girls, and was...",
+        "of six and was always considered the most...",
+        "of seven children which was called what",
+        "of seven. His elder siblings included three sisters...",
+        "of seven children",
+        "of nine children. His father was an artist,...",
+        "of five and grew up in the small...",
+        "of eight. With the exception of a few...",
+        "of six and his older brother was killed...",
+        "of eight children"
+      ],
+      "steps": [
+        {
+          "step": 1,
+          "target_prefix": "他是",
+          "per_future_topk": [
+            [
+              {
+                "text": "六个",
+                "prob": 0.815
+              },
+              {
+                "text": "家中",
+                "prob": 0.11
+              },
+              {
+                "text": "家",
+                "prob": 0.052
+              },
+              {
+                "text": "六",
+                "prob": 0.013
+              },
+              {
+                "text": "家里",
+                "prob": 0.009
+              }
+            ],
+            [
+              {
+                "text": "六个",
+                "prob": 0.965
+              },
+              {
+                "text": "六",
+                "prob": 0.023
+              },
+              {
+                "text": "家中",
+                "prob": 0.007
+              },
+              {
+                "text": "家",
+                "prob": 0.005
+              },
+              {
+                "text": "家里",
+                "prob": 0.001
+              }
+            ],
+            [
+              {
+                "text": "七个",
+                "prob": 0.89
+              },
+              {
+                "text": "七",
+                "prob": 0.094
+              },
+              {
+                "text": "家里",
+                "prob": 0.007
+              },
+              {
+                "text": "家中",
+                "prob": 0.007
+              },
+              {
+                "text": "家",
+                "prob": 0.002
+              }
+            ],
+            [
+              {
+                "text": "七个",
+                "prob": 0.817
+              },
+              {
+                "text": "家中",
+                "prob": 0.067
+              },
+              {
+                "text": "七",
+                "prob": 0.052
+              },
+              {
+                "text": "家",
+                "prob": 0.052
+              },
+              {
+                "text": "家里",
+                "prob": 0.012
+              }
+            ],
+            [
+              {
+                "text": "七个",
+                "prob": 0.865
+              },
+              {
+                "text": "七",
+                "prob": 0.071
+              },
+              {
+                "text": "家中",
+                "prob": 0.034
+              },
+              {
+                "text": "家",
+                "prob": 0.02
+              },
+              {
+                "text": "家里",
+                "prob": 0.01
+              }
+            ],
+            [
+              {
+                "text": "九",
+                "prob": 0.972
+              },
+              {
+                "text": "家中",
+                "prob": 0.018
+              },
+              {
+                "text": "家",
+                "prob": 0.008
+              },
+              {
+                "text": "家里",
+                "prob": 0.001
+              },
+              {
+                "text": "兄弟",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "五个",
+                "prob": 0.657
+              },
+              {
+                "text": "家中",
+                "prob": 0.188
+              },
+              {
+                "text": "五",
+                "prob": 0.114
+              },
+              {
+                "text": "家",
+                "prob": 0.033
+              },
+              {
+                "text": "家里",
+                "prob": 0.007
+              }
+            ],
+            [
+              {
+                "text": "八个",
+                "prob": 0.374
+              },
+              {
+                "text": "家中",
+                "prob": 0.227
+              },
+              {
+                "text": "家",
+                "prob": 0.177
+              },
+              {
+                "text": "八",
+                "prob": 0.137
+              },
+              {
+                "text": "家里",
+                "prob": 0.083
+              }
+            ],
+            [
+              {
+                "text": "六个",
+                "prob": 0.845
+              },
+              {
+                "text": "家中",
+                "prob": 0.089
+              },
+              {
+                "text": "六",
+                "prob": 0.042
+              },
+              {
+                "text": "家",
+                "prob": 0.02
+              },
+              {
+                "text": "家里",
+                "prob": 0.004
+              }
+            ],
+            [
+              {
+                "text": "八个",
+                "prob": 0.533
+              },
+              {
+                "text": "家中",
+                "prob": 0.196
+              },
+              {
+                "text": "家",
+                "prob": 0.153
+              },
+              {
+                "text": "八",
+                "prob": 0.093
+              },
+              {
+                "text": "家里",
+                "prob": 0.023
+              }
+            ]
+          ],
+          "intersection": [
+            45629,
+            102078,
+            104212,
+            105633,
+            108071
+          ],
+          "avg_prob": 0.094,
+          "selected_text": "家中",
+          "decision": "APPEND",
+          "reason": ""
+        },
+        {
+          "step": 2,
+          "target_prefix": "他是家中",
+          "per_future_topk": [
+            [
+              {
+                "text": "六个",
+                "prob": 0.991
+              },
+              {
+                "text": "六",
+                "prob": 0.009
+              },
+              {
+                "text": "九",
+                "prob": 0.0
+              },
+              {
+                "text": "七个",
+                "prob": 0.0
+              },
+              {
+                "text": "八个",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "六个",
+                "prob": 0.999
+              },
+              {
+                "text": "六",
+                "prob": 0.001
+              },
+              {
+                "text": "6",
+                "prob": 0.0
+              },
+              {
+                "text": "第六",
+                "prob": 0.0
+              },
+              {
+                "text": "七个",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "七个",
+                "prob": 0.998
+              },
+              {
+                "text": "七",
+                "prob": 0.002
+              },
+              {
+                "text": "第七",
+                "prob": 0.0
+              },
+              {
+                "text": "7",
+                "prob": 0.0
+              },
+              {
+                "text": "六个",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "七个",
+                "prob": 0.997
+              },
+              {
+                "text": "七",
+                "prob": 0.003
+              },
+              {
+                "text": "第七",
+                "prob": 0.0
+              },
+              {
+                "text": "排行",
+                "prob": 0.0
+              },
+              {
+                "text": "八个",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "七个",
+                "prob": 0.997
+              },
+              {
+                "text": "七",
+                "prob": 0.003
+              },
+              {
+                "text": "六个",
+                "prob": 0.0
+              },
+              {
+                "text": "八个",
+                "prob": 0.0
+              },
+              {
+                "text": "7",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "九",
+                "prob": 1.0
+              },
+              {
+                "text": "第九",
+                "prob": 0.0
+              },
+              {
+                "text": "九大",
+                "prob": 0.0
+              },
+              {
+                "text": "9",
+                "prob": 0.0
+              },
+              {
+                "text": "十个",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "五个",
+                "prob": 0.999
+              },
+              {
+                "text": "五",
+                "prob": 0.001
+              },
+              {
+                "text": "第五",
+                "prob": 0.0
+              },
+              {
+                "text": "5",
+                "prob": 0.0
+              },
+              {
+                "text": "六个",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "八个",
+                "prob": 0.998
+              },
+              {
+                "text": "八",
+                "prob": 0.002
+              },
+              {
+                "text": "八大",
+                "prob": 0.0
+              },
+              {
+                "text": "第八",
+                "prob": 0.0
+              },
+              {
+                "text": "8",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "六个",
+                "prob": 0.998
+              },
+              {
+                "text": "六",
+                "prob": 0.002
+              },
+              {
+                "text": "第六",
+                "prob": 0.0
+              },
+              {
+                "text": "6",
+                "prob": 0.0
+              },
+              {
+                "text": "七个",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "八个",
+                "prob": 0.998
+              },
+              {
+                "text": "八",
+                "prob": 0.002
+              },
+              {
+                "text": "8",
+                "prob": 0.0
+              },
+              {
+                "text": "八大",
+                "prob": 0.0
+              },
+              {
+                "text": "七个",
+                "prob": 0.0
+              }
+            ]
+          ],
+          "intersection": [],
+          "avg_prob": null,
+          "selected_text": "",
+          "decision": "READ",
+          "reason": "empty_intersection"
+        }
+      ],
+      "delta": "家中",
+      "stop_reason": "empty_intersection"
+    },
+    {
+      "observed_src": "He was the fourth child in a family with six",
+      "committed_before": "他是家中",
+      "futures": [
+        "children and his father, who had lost his...",
+        "siblings. In 1938 he was studying medicine and...",
+        "siblings, all of whom were born in the...",
+        "children. His mother died when he was very...",
+        "members. He was born the year before the...",
+        "children. Two of his siblings, one brother and...",
+        "children. In school, he was a model student...",
+        "others. He started to speak with a lisp...",
+        "boys. Born in Peshawar, he was the son...",
+        "children that included four brothers, three sisters and..."
+      ],
+      "steps": [
+        {
+          "step": 1,
+          "target_prefix": "他是家中",
+          "per_future_topk": [
+            [
+              {
+                "text": "六个",
+                "prob": 1.0
+              },
+              {
+                "text": "六",
+                "prob": 0.0
+              },
+              {
+                "text": "七个",
+                "prob": 0.0
+              },
+              {
+                "text": "6",
+                "prob": 0.0
+              },
+              {
+                "text": "第六",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "六个",
+                "prob": 0.999
+              },
+              {
+                "text": "六",
+                "prob": 0.001
+              },
+              {
+                "text": "七个",
+                "prob": 0.0
+              },
+              {
+                "text": "6",
+                "prob": 0.0
+              },
+              {
+                "text": "第六",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "六个",
+                "prob": 0.999
+              },
+              {
+                "text": "六",
+                "prob": 0.001
+              },
+              {
+                "text": "第六",
+                "prob": 0.0
+              },
+              {
+                "text": "七个",
+                "prob": 0.0
+              },
+              {
+                "text": "6",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "六个",
+                "prob": 1.0
+              },
+              {
+                "text": "六",
+                "prob": 0.0
+              },
+              {
+                "text": "七个",
+                "prob": 0.0
+              },
+              {
+                "text": "第六",
+                "prob": 0.0
+              },
+              {
+                "text": "6",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "六个",
+                "prob": 0.989
+              },
+              {
+                "text": "六",
+                "prob": 0.011
+              },
+              {
+                "text": "第六",
+                "prob": 0.0
+              },
+              {
+                "text": "6",
+                "prob": 0.0
+              },
+              {
+                "text": "七个",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "六个",
+                "prob": 1.0
+              },
+              {
+                "text": "六",
+                "prob": 0.0
+              },
+              {
+                "text": "第六",
+                "prob": 0.0
+              },
+              {
+                "text": "6",
+                "prob": 0.0
+              },
+              {
+                "text": "七个",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "六个",
+                "prob": 0.999
+              },
+              {
+                "text": "六",
+                "prob": 0.001
+              },
+              {
+                "text": "6",
+                "prob": 0.0
+              },
+              {
+                "text": "七个",
+                "prob": 0.0
+              },
+              {
+                "text": "第六",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "六个",
+                "prob": 0.991
+              },
+              {
+                "text": "六",
+                "prob": 0.009
+              },
+              {
+                "text": "七个",
+                "prob": 0.001
+              },
+              {
+                "text": "其他",
+                "prob": 0.0
+              },
+              {
+                "text": "第六",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "六个",
+                "prob": 0.999
+              },
+              {
+                "text": "六",
+                "prob": 0.001
+              },
+              {
+                "text": "第六",
+                "prob": 0.0
+              },
+              {
+                "text": "6",
+                "prob": 0.0
+              },
+              {
+                "text": "七个",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "六个",
+                "prob": 0.999
+              },
+              {
+                "text": "六",
+                "prob": 0.001
+              },
+              {
+                "text": "第六",
+                "prob": 0.0
+              },
+              {
+                "text": "七个",
+                "prob": 0.0
+              },
+              {
+                "text": "6",
+                "prob": 0.0
+              }
+            ]
+          ],
+          "intersection": [
+            21,
+            99566,
+            102651,
+            108709,
+            111565,
+            113392
+          ],
+          "avg_prob": 0.997,
+          "selected_text": "六个",
+          "decision": "APPEND",
+          "reason": ""
+        },
+        {
+          "step": 2,
+          "target_prefix": "他是家中六个",
+          "per_future_topk": [
+            [
+              {
+                "text": "孩子",
+                "prob": 0.998
+              },
+              {
+                "text": "子女",
+                "prob": 0.002
+              },
+              {
+                "text": "孩子的",
+                "prob": 0.0
+              },
+              {
+                "text": "兄弟",
+                "prob": 0.0
+              },
+              {
+                "text": "孩",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "兄弟",
+                "prob": 0.999
+              },
+              {
+                "text": "兄",
+                "prob": 0.001
+              },
+              {
+                "text": "子女",
+                "prob": 0.0
+              },
+              {
+                "text": "同胞",
+                "prob": 0.0
+              },
+              {
+                "text": "孩子",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "兄弟",
+                "prob": 0.999
+              },
+              {
+                "text": "兄",
+                "prob": 0.001
+              },
+              {
+                "text": "同胞",
+                "prob": 0.0
+              },
+              {
+                "text": "子女",
+                "prob": 0.0
+              },
+              {
+                "text": "孩子",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "孩子",
+                "prob": 0.999
+              },
+              {
+                "text": "子女",
+                "prob": 0.001
+              },
+              {
+                "text": "孩子的",
+                "prob": 0.0
+              },
+              {
+                "text": "孩",
+                "prob": 0.0
+              },
+              {
+                "text": "小孩",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "成员",
+                "prob": 1.0
+              },
+              {
+                "text": "子女",
+                "prob": 0.0
+              },
+              {
+                "text": "孩子",
+                "prob": 0.0
+              },
+              {
+                "text": "兄弟",
+                "prob": 0.0
+              },
+              {
+                "text": "会员",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "孩子",
+                "prob": 0.999
+              },
+              {
+                "text": "子女",
+                "prob": 0.001
+              },
+              {
+                "text": "孩子的",
+                "prob": 0.0
+              },
+              {
+                "text": "兄弟",
+                "prob": 0.0
+              },
+              {
+                "text": "孩",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "孩子",
+                "prob": 1.0
+              },
+              {
+                "text": "子女",
+                "prob": 0.0
+              },
+              {
+                "text": "孩子的",
+                "prob": 0.0
+              },
+              {
+                "text": "孩",
+                "prob": 0.0
+              },
+              {
+                "text": "小孩",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "孩子",
+                "prob": 0.876
+              },
+              {
+                "text": "兄弟",
+                "prob": 0.119
+              },
+              {
+                "text": "子女",
+                "prob": 0.004
+              },
+              {
+                "text": "其他",
+                "prob": 0.001
+              },
+              {
+                "text": "兄",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "男孩",
+                "prob": 1.0
+              },
+              {
+                "text": "儿子",
+                "prob": 0.0
+              },
+              {
+                "text": "兄弟",
+                "prob": 0.0
+              },
+              {
+                "text": "男孩子",
+                "prob": 0.0
+              },
+              {
+                "text": "男",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "孩子",
+                "prob": 0.97
+              },
+              {
+                "text": "子女",
+                "prob": 0.029
+              },
+              {
+                "text": "孩子的",
+                "prob": 0.001
+              },
+              {
+                "text": "兄弟",
+                "prob": 0.0
+              },
+              {
+                "text": "孩",
+                "prob": 0.0
+              }
+            ]
+          ],
+          "intersection": [
+            99657,
+            104212
+          ],
+          "avg_prob": 0.584,
+          "selected_text": "孩子",
+          "decision": "APPEND",
+          "reason": ""
+        },
+        {
+          "step": 3,
+          "target_prefix": "他是家中六个孩子",
+          "per_future_topk": [
+            [
+              {
+                "text": "中的",
+                "prob": 1.0
+              },
+              {
+                "text": "里的",
+                "prob": 0.0
+              },
+              {
+                "text": "中",
+                "prob": 0.0
+              },
+              {
+                "text": "中最",
+                "prob": 0.0
+              },
+              {
+                "text": "当",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "中的",
+                "prob": 1.0
+              },
+              {
+                "text": "里的",
+                "prob": 0.0
+              },
+              {
+                "text": "中",
+                "prob": 0.0
+              },
+              {
+                "text": "当",
+                "prob": 0.0
+              },
+              {
+                "text": "中最",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "中的",
+                "prob": 1.0
+              },
+              {
+                "text": "里的",
+                "prob": 0.0
+              },
+              {
+                "text": "中",
+                "prob": 0.0
+              },
+              {
+                "text": "当",
+                "prob": 0.0
+              },
+              {
+                "text": "中最",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "中的",
+                "prob": 1.0
+              },
+              {
+                "text": "里的",
+                "prob": 0.0
+              },
+              {
+                "text": "中",
+                "prob": 0.0
+              },
+              {
+                "text": "中最",
+                "prob": 0.0
+              },
+              {
+                "text": "当",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "中的",
+                "prob": 1.0
+              },
+              {
+                "text": "里的",
+                "prob": 0.0
+              },
+              {
+                "text": "中",
+                "prob": 0.0
+              },
+              {
+                "text": "中最",
+                "prob": 0.0
+              },
+              {
+                "text": "当",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "中的",
+                "prob": 1.0
+              },
+              {
+                "text": "里的",
+                "prob": 0.0
+              },
+              {
+                "text": "中",
+                "prob": 0.0
+              },
+              {
+                "text": "当",
+                "prob": 0.0
+              },
+              {
+                "text": "中最",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "中的",
+                "prob": 1.0
+              },
+              {
+                "text": "里的",
+                "prob": 0.0
+              },
+              {
+                "text": "中",
+                "prob": 0.0
+              },
+              {
+                "text": "当",
+                "prob": 0.0
+              },
+              {
+                "text": "中最",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "中的",
+                "prob": 1.0
+              },
+              {
+                "text": "之外",
+                "prob": 0.0
+              },
+              {
+                "text": "中",
+                "prob": 0.0
+              },
+              {
+                "text": "之一",
+                "prob": 0.0
+              },
+              {
+                "text": "里的",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "中的",
+                "prob": 0.998
+              },
+              {
+                "text": "中",
+                "prob": 0.002
+              },
+              {
+                "text": "里的",
+                "prob": 0.0
+              },
+              {
+                "text": "中最",
+                "prob": 0.0
+              },
+              {
+                "text": "排行",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "中的",
+                "prob": 1.0
+              },
+              {
+                "text": "中",
+                "prob": 0.0
+              },
+              {
+                "text": "里的",
+                "prob": 0.0
+              },
+              {
+                "text": "中最",
+                "prob": 0.0
+              },
+              {
+                "text": "之一",
+                "prob": 0.0
+              }
+            ]
+          ],
+          "intersection": [
+            15946,
+            39165,
+            100653,
+            101047,
+            102073,
+            109153
+          ],
+          "avg_prob": 1.0,
+          "selected_text": "中的",
+          "decision": "APPEND",
+          "reason": ""
+        },
+        {
+          "step": 4,
+          "target_prefix": "他是家中六个孩子中的",
+          "per_future_topk": [
+            [
+              {
+                "text": "第",
+                "prob": 0.499
+              },
+              {
+                "text": "第四",
+                "prob": 0.499
+              },
+              {
+                "text": "老",
+                "prob": 0.002
+              },
+              {
+                "text": "幼",
+                "prob": 0.0
+              },
+              {
+                "text": "最小",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "第四",
+                "prob": 0.561
+              },
+              {
+                "text": "第",
+                "prob": 0.437
+              },
+              {
+                "text": "老",
+                "prob": 0.002
+              },
+              {
+                "text": "幼",
+                "prob": 0.0
+              },
+              {
+                "text": "最小",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "第",
+                "prob": 0.73
+              },
+              {
+                "text": "第四",
+                "prob": 0.269
+              },
+              {
+                "text": "老",
+                "prob": 0.001
+              },
+              {
+                "text": "幼",
+                "prob": 0.0
+              },
+              {
+                "text": "最小",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "第",
+                "prob": 0.777
+              },
+              {
+                "text": "第四",
+                "prob": 0.223
+              },
+              {
+                "text": "老",
+                "prob": 0.001
+              },
+              {
+                "text": "幼",
+                "prob": 0.0
+              },
+              {
+                "text": "最小",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "第",
+                "prob": 0.73
+              },
+              {
+                "text": "第四",
+                "prob": 0.269
+              },
+              {
+                "text": "老",
+                "prob": 0.001
+              },
+              {
+                "text": "幼",
+                "prob": 0.0
+              },
+              {
+                "text": "最小",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "第",
+                "prob": 0.562
+              },
+              {
+                "text": "第四",
+                "prob": 0.438
+              },
+              {
+                "text": "老",
+                "prob": 0.0
+              },
+              {
+                "text": "幼",
+                "prob": 0.0
+              },
+              {
+                "text": "最小",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "第",
+                "prob": 0.731
+              },
+              {
+                "text": "第四",
+                "prob": 0.269
+              },
+              {
+                "text": "老",
+                "prob": 0.001
+              },
+              {
+                "text": "幼",
+                "prob": 0.0
+              },
+              {
+                "text": "第三个",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "第",
+                "prob": 0.678
+              },
+              {
+                "text": "第四",
+                "prob": 0.32
+              },
+              {
+                "text": "老",
+                "prob": 0.001
+              },
+              {
+                "text": "幼",
+                "prob": 0.0
+              },
+              {
+                "text": "最小",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "第",
+                "prob": 0.561
+              },
+              {
+                "text": "第四",
+                "prob": 0.437
+              },
+              {
+                "text": "老",
+                "prob": 0.002
+              },
+              {
+                "text": "幼",
+                "prob": 0.0
+              },
+              {
+                "text": "最小",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "第",
+                "prob": 0.5
+              },
+              {
+                "text": "第四",
+                "prob": 0.5
+              },
+              {
+                "text": "老",
+                "prob": 0.0
+              },
+              {
+                "text": "幼",
+                "prob": 0.0
+              },
+              {
+                "text": "最小",
+                "prob": 0.0
+              }
+            ]
+          ],
+          "intersection": [
+            29437,
+            91777,
+            100503,
+            100802,
+            102232,
+            102320,
+            108801,
+            112363
+          ],
+          "avg_prob": 0.62,
+          "selected_text": "第",
+          "decision": "APPEND",
+          "reason": ""
+        },
+        {
+          "step": 5,
+          "target_prefix": "他是家中六个孩子中的第",
+          "per_future_topk": [
+            [
+              {
+                "text": "四个",
+                "prob": 1.0
+              },
+              {
+                "text": "四个方面",
+                "prob": 0.0
+              },
+              {
+                "text": "4",
+                "prob": 0.0
+              },
+              {
+                "text": "几个",
+                "prob": 0.0
+              },
+              {
+                "text": "四个自信",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "四个",
+                "prob": 1.0
+              },
+              {
+                "text": "四个方面",
+                "prob": 0.0
+              },
+              {
+                "text": "4",
+                "prob": 0.0
+              },
+              {
+                "text": "第四",
+                "prob": 0.0
+              },
+              {
+                "text": "几个",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "四个",
+                "prob": 1.0
+              },
+              {
+                "text": "四个方面",
+                "prob": 0.0
+              },
+              {
+                "text": "4",
+                "prob": 0.0
+              },
+              {
+                "text": "几个",
+                "prob": 0.0
+              },
+              {
+                "text": "四个自信",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "四个",
+                "prob": 1.0
+              },
+              {
+                "text": "四个方面",
+                "prob": 0.0
+              },
+              {
+                "text": "4",
+                "prob": 0.0
+              },
+              {
+                "text": "几个",
+                "prob": 0.0
+              },
+              {
+                "text": "四个自信",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "四个",
+                "prob": 1.0
+              },
+              {
+                "text": "四个方面",
+                "prob": 0.0
+              },
+              {
+                "text": "4",
+                "prob": 0.0
+              },
+              {
+                "text": "几个",
+                "prob": 0.0
+              },
+              {
+                "text": "四个自信",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "四个",
+                "prob": 1.0
+              },
+              {
+                "text": "四个方面",
+                "prob": 0.0
+              },
+              {
+                "text": "4",
+                "prob": 0.0
+              },
+              {
+                "text": "几个",
+                "prob": 0.0
+              },
+              {
+                "text": "四个自信",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "四个",
+                "prob": 1.0
+              },
+              {
+                "text": "四个方面",
+                "prob": 0.0
+              },
+              {
+                "text": "4",
+                "prob": 0.0
+              },
+              {
+                "text": "几个",
+                "prob": 0.0
+              },
+              {
+                "text": "四个自信",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "四个",
+                "prob": 1.0
+              },
+              {
+                "text": "四个方面",
+                "prob": 0.0
+              },
+              {
+                "text": "4",
+                "prob": 0.0
+              },
+              {
+                "text": "十四",
+                "prob": 0.0
+              },
+              {
+                "text": "几个",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "四个",
+                "prob": 1.0
+              },
+              {
+                "text": "四个方面",
+                "prob": 0.0
+              },
+              {
+                "text": "4",
+                "prob": 0.0
+              },
+              {
+                "text": "几个",
+                "prob": 0.0
+              },
+              {
+                "text": "十四",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "四个",
+                "prob": 1.0
+              },
+              {
+                "text": "四个方面",
+                "prob": 0.0
+              },
+              {
+                "text": "4",
+                "prob": 0.0
+              },
+              {
+                "text": "几个",
+                "prob": 0.0
+              },
+              {
+                "text": "四个自信",
+                "prob": 0.0
+              }
+            ]
+          ],
+          "intersection": [
+            19,
+            100204,
+            100802,
+            100977,
+            102232,
+            117404,
+            118241
+          ],
+          "avg_prob": 1.0,
+          "selected_text": "四个",
+          "decision": "APPEND",
+          "reason": ""
+        },
+        {
+          "step": 6,
+          "target_prefix": "他是家中六个孩子中的第四个",
+          "per_future_topk": [
+            [
+              {
+                "text": "，",
+                "prob": 1.0
+              },
+              {
+                "text": "孩子",
+                "prob": 0.0
+              },
+              {
+                "text": "。",
+                "prob": 0.0
+              },
+              {
+                "text": "儿子",
+                "prob": 0.0
+              },
+              {
+                "text": "；",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "。",
+                "prob": 1.0
+              },
+              {
+                "text": "孩子",
+                "prob": 0.0
+              },
+              {
+                "text": "子女",
+                "prob": 0.0
+              },
+              {
+                "text": "，",
+                "prob": 0.0
+              },
+              {
+                "text": "，在",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "，",
+                "prob": 1.0
+              },
+              {
+                "text": "，在",
+                "prob": 0.0
+              },
+              {
+                "text": "孩子",
+                "prob": 0.0
+              },
+              {
+                "text": "。",
+                "prob": 0.0
+              },
+              {
+                "text": ",",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "。",
+                "prob": 1.0
+              },
+              {
+                "text": "，",
+                "prob": 0.0
+              },
+              {
+                "text": "孩子",
+                "prob": 0.0
+              },
+              {
+                "text": ".",
+                "prob": 0.0
+              },
+              {
+                "text": "子女",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "。",
+                "prob": 1.0
+              },
+              {
+                "text": "，",
+                "prob": 0.0
+              },
+              {
+                "text": "孩子",
+                "prob": 0.0
+              },
+              {
+                "text": "；",
+                "prob": 0.0
+              },
+              {
+                "text": ".",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "。",
+                "prob": 1.0
+              },
+              {
+                "text": "孩子",
+                "prob": 0.0
+              },
+              {
+                "text": "，",
+                "prob": 0.0
+              },
+              {
+                "text": "子女",
+                "prob": 0.0
+              },
+              {
+                "text": ".",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "。",
+                "prob": 1.0
+              },
+              {
+                "text": "孩子",
+                "prob": 0.0
+              },
+              {
+                "text": "子女",
+                "prob": 0.0
+              },
+              {
+                "text": "，在",
+                "prob": 0.0
+              },
+              {
+                "text": ".",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "。",
+                "prob": 1.0
+              },
+              {
+                "text": "，",
+                "prob": 0.0
+              },
+              {
+                "text": "孩子",
+                "prob": 0.0
+              },
+              {
+                "text": "；",
+                "prob": 0.0
+              },
+              {
+                "text": ".",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "。",
+                "prob": 0.911
+              },
+              {
+                "text": "儿子",
+                "prob": 0.075
+              },
+              {
+                "text": "男孩",
+                "prob": 0.01
+              },
+              {
+                "text": "，",
+                "prob": 0.004
+              },
+              {
+                "text": "孩子",
+                "prob": 0.0
+              }
+            ],
+            [
+              {
+                "text": "，",
+                "prob": 1.0
+              },
+              {
+                "text": "孩子",
+                "prob": 0.0
+              },
+              {
+                "text": "子女",
+                "prob": 0.0
+              },
+              {
+                "text": "小孩",
+                "prob": 0.0
+              },
+              {
+                "text": "，在",
+                "prob": 0.0
+              }
+            ]
+          ],
+          "intersection": [
+            1773,
+            3837,
+            99657
+          ],
+          "avg_prob": 0.691,
+          "selected_text": "。",
+          "decision": "APPEND",
+          "reason": ""
+        }
+      ],
+      "delta": "六个孩子中的第四个。",
+      "stop_reason": "max_consensus_steps"
+    }
+  ],
+  "post_commit_rest": ""
+}

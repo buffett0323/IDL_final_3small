@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>STTR Live Demo — Token Consensus Decoding</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: #0f1220;
+    color: #e8ebf5;
+    min-height: 100vh;
+  }
+  .container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 24px;
+  }
+  h1 {
+    font-size: 24px;
+    margin: 0 0 4px 0;
+    color: #fff;
+    letter-spacing: -0.3px;
+  }
+  h2 {
+    font-size: 15px;
+    color: #8892b5;
+    font-weight: 400;
+    margin: 0 0 20px 0;
+  }
+
+  /* Pipeline */
+  .pipeline {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    background: linear-gradient(90deg, #1a1e3a 0%, #1f2347 100%);
+    border: 1px solid #2a2f55;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 20px;
+  }
+  .stage {
+    flex: 1;
+    text-align: center;
+    padding: 14px 8px;
+    border-radius: 8px;
+    background: #242a52;
+    border: 1px solid #353d7a;
+    font-size: 14px;
+    transition: all 0.4s ease;
+  }
+  .stage.active {
+    background: linear-gradient(135deg, #4a5cff 0%, #7b49ff 100%);
+    border-color: #7b8eff;
+    box-shadow: 0 0 24px rgba(90, 100, 255, 0.5);
+    transform: translateY(-2px);
+  }
+  .stage .label {
+    font-size: 11px;
+    color: #8892b5;
+    display: block;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 4px;
+  }
+  .stage.active .label { color: #c5cdff; }
+  .arrow {
+    color: #4a5cff;
+    font-size: 22px;
+    flex: 0 0 20px;
+  }
+
+  /* Controls */
+  .controls {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+  button {
+    background: #2a2f55;
+    border: 1px solid #4a5cff;
+    color: #fff;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-family: inherit;
+  }
+  button:hover { background: #4a5cff; }
+  button.primary {
+    background: linear-gradient(135deg, #4a5cff 0%, #7b49ff 100%);
+  }
+  button.speed.active { background: #4a5cff; }
+  .speed-label {
+    color: #8892b5;
+    font-size: 13px;
+    margin-left: 12px;
+  }
+
+  /* Main I/O */
+  .main-io {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .io-box {
+    background: #1a1e3a;
+    border: 1px solid #2a2f55;
+    border-radius: 10px;
+    padding: 16px;
+    min-height: 90px;
+  }
+  .io-box h3 {
+    margin: 0 0 10px 0;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: #8892b5;
+  }
+  .source-words, .target-chars {
+    font-size: 20px;
+    line-height: 1.5;
+    min-height: 40px;
+    letter-spacing: 0.2px;
+  }
+  .word, .char {
+    display: inline-block;
+    transition: all 0.3s ease;
+    padding: 2px 4px;
+    border-radius: 3px;
+  }
+  .word.arrived {
+    color: #e8ebf5;
+  }
+  .word.new {
+    background: #4a5cff;
+    color: #fff;
+    animation: pulse 0.8s ease;
+  }
+  .char.committed {
+    color: #fff;
+  }
+  .char.just-committed {
+    background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+    color: #fff;
+    animation: pulse 0.8s ease;
+  }
+  @keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.15); }
+    100% { transform: scale(1); }
+  }
+
+  /* TC panel */
+  .tc-panel {
+    background: linear-gradient(135deg, #1a1e3a 0%, #22264a 100%);
+    border: 1px solid #353d7a;
+    border-radius: 12px;
+    padding: 18px;
+    margin-bottom: 16px;
+    opacity: 0.4;
+    transition: opacity 0.4s;
+  }
+  .tc-panel.active { opacity: 1; }
+  .tc-panel h3 {
+    margin: 0 0 10px 0;
+    color: #c5cdff;
+    font-size: 14px;
+  }
+  .step-meta {
+    font-size: 13px;
+    color: #8892b5;
+    margin-bottom: 14px;
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+  }
+  .step-meta .prefix {
+    color: #22c55e;
+    background: rgba(34, 197, 94, 0.1);
+    padding: 2px 6px;
+    border-radius: 3px;
+  }
+
+  /* Futures grid */
+  .futures {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .future-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid #353d7a;
+    border-radius: 6px;
+    padding: 8px;
+    font-size: 11px;
+  }
+  .future-preview {
+    color: #8892b5;
+    font-style: italic;
+    font-size: 10px;
+    margin-bottom: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .future-topk {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .topk-token {
+    display: flex;
+    justify-content: space-between;
+    padding: 2px 6px;
+    border-radius: 3px;
+    background: rgba(74, 92, 255, 0.08);
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: 11px;
+    transition: background 0.3s;
+  }
+  .topk-token.in-intersection {
+    background: rgba(34, 197, 94, 0.25);
+    color: #86efac;
+    font-weight: 600;
+  }
+  .topk-token.winner {
+    background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+    color: #fff;
+    box-shadow: 0 0 8px rgba(34, 197, 94, 0.5);
+  }
+  .topk-prob {
+    color: #8892b5;
+    font-size: 10px;
+  }
+  .topk-token.in-intersection .topk-prob { color: #86efac; }
+  .topk-token.winner .topk-prob { color: #d1fae5; }
+
+  /* Intersection decision box */
+  .decision {
+    background: rgba(74, 92, 255, 0.1);
+    border: 1px solid #4a5cff;
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 13px;
+    margin-top: 8px;
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .decision-label {
+    color: #8892b5;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .decision-value {
+    color: #fff;
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-weight: 600;
+  }
+  .decision.read .decision-value {
+    color: #f59e0b;
+  }
+  .decision.append .decision-value {
+    color: #22c55e;
+  }
+
+  /* Log */
+  .log-panel {
+    background: #0b0e1c;
+    border: 1px solid #2a2f55;
+    border-radius: 10px;
+    padding: 12px;
+    max-height: 200px;
+    overflow-y: auto;
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: 12px;
+  }
+  .log-panel h3 {
+    margin: 0 0 8px 0;
+    font-size: 11px;
+    text-transform: uppercase;
+    color: #8892b5;
+  }
+  .log-line {
+    padding: 3px 0;
+    color: #c5cdff;
+    border-bottom: 1px solid #1a1e3a;
+  }
+  .log-line.read { color: #f59e0b; }
+  .log-line.append { color: #86efac; }
+  .log-line.phase { color: #a5b4ff; font-weight: 600; }
+  .log-line .ts { color: #4a5cff; margin-right: 8px; }
+
+  /* Footer */
+  .meta {
+    color: #8892b5;
+    font-size: 12px;
+    text-align: center;
+    margin-top: 20px;
+    line-height: 1.6;
+  }
+
+  /* Waveform */
+  .wave {
+    display: inline-flex;
+    gap: 2px;
+    align-items: center;
+    margin-left: 8px;
+    vertical-align: middle;
+  }
+  .wave .bar {
+    width: 3px;
+    background: #4a5cff;
+    border-radius: 1px;
+    opacity: 0.5;
+    animation: wave 1.2s ease-in-out infinite;
+  }
+  @keyframes wave {
+    0%, 100% { height: 4px; }
+    50% { height: 14px; }
+  }
+  .wave .bar:nth-child(2) { animation-delay: 0.1s; }
+  .wave .bar:nth-child(3) { animation-delay: 0.2s; }
+  .wave .bar:nth-child(4) { animation-delay: 0.3s; }
+  .wave .bar:nth-child(5) { animation-delay: 0.4s; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>STTR — Future-Aware Simultaneous Speech Translation</h1>
+<h2>Live demo · Token Consensus Decoding · real trace from CoVoST-2 EN→ZH</h2>
+
+<div class="pipeline">
+  <div class="stage" id="stage-audio">🎤 Audio<span class="label">streaming EN speech</span></div>
+  <div class="arrow">→</div>
+  <div class="stage" id="stage-asr">📝 Whisper-small<span class="label">streaming ASR</span></div>
+  <div class="arrow">→</div>
+  <div class="stage" id="stage-agent">🧠 TC agent<span class="label">Qwen30B + Qwen4B</span></div>
+  <div class="arrow">→</div>
+  <div class="stage" id="stage-output">🈶 Chinese<span class="label">streaming commit</span></div>
+</div>
+
+<div class="controls">
+  <button id="btn-play" class="primary">▶ Play</button>
+  <button id="btn-restart">↻ Restart</button>
+  <span class="speed-label">Speed</span>
+  <button class="speed" data-speed="0.5">0.5×</button>
+  <button class="speed active" data-speed="1">1×</button>
+  <button class="speed" data-speed="2">2×</button>
+  <button class="speed" data-speed="4">4×</button>
+</div>
+
+<div class="main-io">
+  <div class="io-box">
+    <h3>English (ASR from speech, wait-k=5)</h3>
+    <div class="source-words" id="source-words"></div>
+  </div>
+  <div class="io-box">
+    <h3>Chinese (committed, frozen)</h3>
+    <div class="target-chars" id="target-chars"></div>
+  </div>
+</div>
+
+<div class="tc-panel" id="tc-panel">
+  <h3>Commit step — 10 sampled English futures → next-token distributions → hard intersection</h3>
+  <div class="step-meta">
+    Call <span id="call-num">—</span> · Step <span id="step-num">—</span> · Target prefix = <span class="prefix" id="step-prefix">(empty)</span>
+  </div>
+  <div class="futures" id="futures-grid"></div>
+  <div class="decision" id="decision-row">
+    <div>
+      <span class="decision-label">Intersection (shared tokens across all K=10 futures)</span><br>
+      <span class="decision-value" id="intersection-display">—</span>
+    </div>
+    <div>
+      <span class="decision-label">Decision</span><br>
+      <span class="decision-value" id="decision-display">—</span>
+    </div>
+    <div>
+      <span class="decision-label">Avg prob</span><br>
+      <span class="decision-value" id="avgprob-display">—</span>
+    </div>
+  </div>
+</div>
+
+<div class="log-panel">
+  <h3>Decision log</h3>
+  <div id="log"></div>
+</div>
+
+<div class="meta">
+  Sentence #3 from CoVoST-2 EN→ZH · source = <code>"The river was named by Maryweather Lewis after his cousin Maria Wood."</code><br>
+  Qwen3-30B-A3B-Instruct-FP8 (translator, vLLM) · Qwen3-4B-Base (future LM) · Whisper-small (ASR) · SimulEval · wait-k=5 · K=10 futures · top-10 logprobs
+</div>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// Embedded real trace data — extracted from outputs/covost_cascaded/
+//   token_consensus_k5_asr_subset100/token_consensus_trace.jsonl (sid=3)
+// ═══════════════════════════════════════════════════════════════
+const DEMO = {"sentence_id": 3, "full_source": "The river was named by Maryweather Lewis after his cousin Maria Wood.", "full_reference": "这条河是 Meriwether Lewis 以他的堂兄 Maria Wood 的名字命名的。", "final_prediction": "这条河由马里韦瑟·刘易斯以其表亲玛丽亚·伍德的名字命名。", "policy_calls": [{"observed_src": "The river was named by", "committed_before": "", "futures": ["Europeans who explored it in the early 20th...", "which famous explorer after whom? Also, which famous...", "a local Chief at the time of its...", "Samuel Blatchley, when it first crossed the watershed...", "an explorer who was searching for the legendary...", "a French officer after which king???", "the early explorers after which North American Native...", "European explorers. What was the name they gave...", "the US Army Corps of Engineers in 1915....", "Dutch navigators after the bishop who commissioned its..."], "steps": [{"step": 1, "target_prefix": "", "per_future_topk": [[{"text": "这条", "prob": 0.958}, {"text": "河流", "prob": 0.037}, {"text": "欧洲", "prob": 0.003}, {"text": "该", "prob": 0.001}, {"text": "河", "prob": 0.0}], [{"text": "这条", "prob": 0.999}, {"text": "河流", "prob": 0.0}, {"text": "该", "prob": 0.0}, {"text": "这个", "prob": 0.0}, {"text": "这位", "prob": 0.0}], [{"text": "这条", "prob": 0.988}, {"text": "该", "prob": 0.006}, {"text": "河流", "prob": 0.002}, {"text": "这位", "prob": 0.001}, {"text": "此", "prob": 0.001}], [{"text": "这条", "prob": 0.972}, {"text": "河流", "prob": 0.02}, {"text": "该", "prob": 0.004}, {"text": "河", "prob": 0.003}, {"text": "萨", "prob": 0.0}], [{"text": "这条", "prob": 0.997}, {"text": "河流", "prob": 0.002}, {"text": "河", "prob": 0.0}, {"text": "这位", "prob": 0.0}, {"text": "那", "prob": 0.0}], [{"text": "这条", "prob": 0.998}, {"text": "河流", "prob": 0.002}, {"text": "河", "prob": 0.0}, {"text": "这个", "prob": 0.0}, {"text": "这位", "prob": 0.0}], [{"text": "这条", "prob": 0.952}, {"text": "河流", "prob": 0.047}, {"text": "该", "prob": 0.0}, {"text": "早期", "prob": 0.0}, {"text": "河", "prob": 0.0}], [{"text": "这条", "prob": 0.773}, {"text": "河流", "prob": 0.222}, {"text": "欧洲", "prob": 0.004}, {"text": "河", "prob": 0.001}, {"text": "该", "prob": 0.0}], [{"text": "河流", "prob": 0.758}, {"text": "河", "prob": 0.217}, {"text": "该", "prob": 0.008}, {"text": "美国", "prob": 0.007}, {"text": "这条", "prob": 0.004}], [{"text": "这条", "prob": 0.99}, {"text": "河流", "prob": 0.007}, {"text": "该", "prob": 0.002}, {"text": "河", "prob": 0.001}, {"text": "荷兰", "prob": 0.0}]], "intersection": [102850, 103274], "avg_prob": 0.863, "selected_text": "这条", "decision": "APPEND", "reason": ""}, {"step": 2, "target_prefix": "这条", "per_future_topk": [[{"text": "河", "prob": 0.924}, {"text": "河流", "prob": 0.076}, {"text": "河流域", "prob": 0.0}, {"text": "河水", "prob": 0.0}, {"text": "河边", "prob": 0.0}], [{"text": "河", "prob": 0.953}, {"text": "河流", "prob": 0.047}, {"text": "江", "prob": 0.0}, {"text": "河流域", "prob": 0.0}, {"text": "河边", "prob": 0.0}], [{"text": "河", "prob": 0.963}, {"text": "河流", "prob": 0.037}, {"text": "河边", "prob": 0.0}, {"text": "河流域", "prob": 0.0}, {"text": "溪", "prob": 0.0}], [{"text": "河", "prob": 0.924}, {"text": "河流", "prob": 0.076}, {"text": "河流域", "prob": 0.0}, {"text": "溪", "prob": 0.0}, {"text": "河边", "prob": 0.0}], [{"text": "河", "prob": 0.986}, {"text": "河流", "prob": 0.014}, {"text": "河边", "prob": 0.0}, {"text": "河流域", "prob": 0.0}, {"text": "溪", "prob": 0.0}], [{"text": "河", "prob": 0.998}, {"text": "河流", "prob": 0.002}, {"text": "河边", "prob": 0.0}, {"text": "河流域", "prob": 0.0}, {"text": "河水", "prob": 0.0}], [{"text": "河", "prob": 0.94}, {"text": "河流", "prob": 0.06}, {"text": "河流域", "prob": 0.0}, {"text": "河边", "prob": 0.0}, {"text": "河水", "prob": 0.0}], [{"text": "河", "prob": 0.5}, {"text": "河流", "prob": 0.5}, {"text": "河水", "prob": 0.0}, {"text": "流淌", "prob": 0.0}, {"text": "河流域", "prob": 0.0}], [{"text": "河", "prob": 0.924}, {"text": "河流", "prob": 0.076}, {"text": "河道", "prob": 0.0}, {"text": "运河", "prob": 0.0}, {"text": "河水", "prob": 0.0}], [{"text": "河", "prob": 0.971}, {"text": "河流", "prob": 0.029}, {"text": "河流域", "prob": 0.0}, {"text": "河边", "prob": 0.0}, {"text": "河道", "prob": 0.0}]], "intersection": [99469, 103274, 113015, 115354], "avg_prob": 0.908, "selected_text": "河", "decision": "APPEND", "reason": ""}, {"step": 3, "target_prefix": "这条河", "per_future_topk": [[{"text": "由", "prob": 0.816}, {"text": "是由", "prob": 0.11}, {"text": "的名字", "prob": 0.067}, {"text": "是", "prob": 0.004}, {"text": "得", "prob": 0.001}], [{"text": "是以", "prob": 0.897}, {"text": "以", "prob": 0.074}, {"text": "是由", "prob": 0.021}, {"text": "是", "prob": 0.008}, {"text": "由", "prob": 0.001}], [{"text": "是在", "prob": 0.416}, {"text": "的名字", "prob": 0.324}, {"text": "在", "prob": 0.197}, {"text": "是由", "prob": 0.039}, {"text": "由", "prob": 0.011}], [{"text": "由", "prob": 0.875}, {"text": "是由", "prob": 0.072}, {"text": "最初", "prob": 0.044}, {"text": "的名字", "prob": 0.005}, {"text": "名为", "prob": 0.001}], [{"text": "是由", "prob": 0.389}, {"text": "是一位", "prob": 0.236}, {"text": "的名字", "prob": 0.236}, {"text": "由", "prob": 0.068}, {"text": "是以", "prob": 0.025}], [{"text": "是以", "prob": 0.488}, {"text": "是由", "prob": 0.296}, {"text": "是", "prob": 0.18}, {"text": "以", "prob": 0.017}, {"text": "是一位", "prob": 0.015}], [{"text": "由", "prob": 0.826}, {"text": "是由", "prob": 0.144}, {"text": "以", "prob": 0.007}, {"text": "的名字", "prob": 0.006}, {"text": "被", "prob": 0.006}], [{"text": "由", "prob": 0.912}, {"text": "是由", "prob": 0.075}, {"text": "被", "prob": 0.005}, {"text": "的名字", "prob": 0.005}, {"text": "是", "prob": 0.003}], [{"text": "于", "prob": 0.681}, {"text": "由", "prob": 0.251}, {"text": "是在", "prob": 0.021}, {"text": "的名字", "prob": 0.021}, {"text": "是由", "prob": 0.016}], [{"text": "由", "prob": 0.958}, {"text": "是由", "prob": 0.018}, {"text": "被", "prob": 0.012}, {"text": "的名字", "prob": 0.012}, {"text": "以", "prob": 0.0}]], "intersection": [20412, 67071, 104625, 105180], "avg_prob": 0.472, "selected_text": "由", "decision": "APPEND", "reason": ""}, {"step": 4, "target_prefix": "这条河由", "per_future_topk": [[{"text": "2", "prob": 0.985}, {"text": "二十", "prob": 0.014}, {"text": "上世纪", "prob": 0.0}, {"text": "在", "prob": 0.0}, {"text": "早期", "prob": 0.0}], [{"text": "哪", "prob": 1.0}, {"text": "那位", "prob": 0.0}, {"text": "谁", "prob": 0.0}, {"text": "著名的", "prob": 0.0}, {"text": "著名", "prob": 0.0}], [{"text": "当时", "prob": 0.614}, {"text": "当地", "prob": 0.176}, {"text": "发现", "prob": 0.137}, {"text": "一位", "prob": 0.039}, {"text": "当时的", "prob": 0.031}], [{"text": "塞", "prob": 0.848}, {"text": "萨", "prob": 0.147}, {"text": "山", "prob": 0.005}, {"text": "赛", "prob": 0.0}, {"text": "薩", "prob": 0.0}], [{"text": "一位", "prob": 0.905}, {"text": "一名", "prob": 0.095}, {"text": "一个", "prob": 0.0}, {"text": "寻找", "prob": 0.0}, {"text": "一艘", "prob": 0.0}], [{"text": "一名", "prob": 0.731}, {"text": "一位", "prob": 0.269}, {"text": "哪", "prob": 0.0}, {"text": "法国", "prob": 0.0}, {"text": "一个", "prob": 0.0}], [{"text": "早期", "prob": 1.0}, {"text": "最早的", "prob": 0.0}, {"text": "早", "prob": 0.0}, {"text": "最早", "prob": 0.0}, {"text": "最初的", "prob": 0.0}], [{"text": "欧洲", "prob": 1.0}, {"text": "欧", "prob": 0.0}, {"text": "欧美", "prob": 0.0}, {"text": "西方", "prob": 0.0}, {"text": "歐", "prob": 0.0}], [{"text": "美国", "prob": 0.999}, {"text": "美军", "prob": 0.001}, {"text": "美", "prob": 0.0}, {"text": "美國", "prob": 0.0}, {"text": "陆军", "prob": 0.0}], [{"text": "荷兰", "prob": 1.0}, {"text": "荷", "prob": 0.0}, {"text": "1", "prob": 0.0}, {"text": "负责", "prob": 0.0}, {"text": "当时的", "prob": 0.0}]], "intersection": [], "avg_prob": null, "selected_text": "", "decision": "READ", "reason": "empty_intersection"}], "delta": "这条河由", "stop_reason": "empty_intersection"}, {"observed_src": "The river was named by Maryweather Lewis after his", "committed_before": "这条河由", "futures": ["sister Rachel. The Lewis brothers started hunting and...", "sister Lucy, whose maiden name was Gifford. Lewis...", "father, who had explored the creek as early...", "deceased wife. The upper part of the river,...", "son Benjamin, in gratitude for his help in...", "daughter Nell who was named in memory of...", "wife, who, to his dying day, was known...", "mother, Jane Lewis, in honor of her mother,...", "uncle, William Lewis, Sr. on the request of...", "daughter, whom he called Fanny"], "steps": [{"step": 1, "target_prefix": "这条河由", "per_future_topk": [[{"text": "马", "prob": 0.85}, {"text": "玛丽", "prob": 0.148}, {"text": "梅", "prob": 0.001}, {"text": "玛", "prob": 0.001}, {"text": "麦", "prob": 0.0}], [{"text": "马", "prob": 0.728}, {"text": "玛丽", "prob": 0.268}, {"text": "梅", "prob": 0.002}, {"text": "玛", "prob": 0.001}, {"text": "麦", "prob": 0.0}], [{"text": "马", "prob": 0.776}, {"text": "玛丽", "prob": 0.222}, {"text": "梅", "prob": 0.001}, {"text": "玛", "prob": 0.0}, {"text": "麦", "prob": 0.0}], [{"text": "玛丽", "prob": 0.562}, {"text": "马", "prob": 0.437}, {"text": "玛", "prob": 0.001}, {"text": "梅", "prob": 0.0}, {"text": "麦", "prob": 0.0}], [{"text": "马", "prob": 0.676}, {"text": "玛丽", "prob": 0.319}, {"text": "梅", "prob": 0.004}, {"text": "玛", "prob": 0.001}, {"text": "麦", "prob": 0.0}], [{"text": "玛丽", "prob": 0.621}, {"text": "马", "prob": 0.377}, {"text": "梅", "prob": 0.001}, {"text": "玛", "prob": 0.001}, {"text": "麦", "prob": 0.0}], [{"text": "马", "prob": 0.499}, {"text": "玛丽", "prob": 0.499}, {"text": "玛", "prob": 0.001}, {"text": "梅", "prob": 0.001}, {"text": "麦", "prob": 0.0}], [{"text": "马", "prob": 0.499}, {"text": "玛丽", "prob": 0.499}, {"text": "梅", "prob": 0.001}, {"text": "玛", "prob": 0.001}, {"text": "麦", "prob": 0.0}], [{"text": "马", "prob": 0.622}, {"text": "玛丽", "prob": 0.377}, {"text": "玛", "prob": 0.001}, {"text": "梅", "prob": 0.0}, {"text": "麦", "prob": 0.0}], [{"text": "玛丽", "prob": 0.621}, {"text": "马", "prob": 0.377}, {"text": "梅", "prob": 0.001}, {"text": "玛", "prob": 0.001}, {"text": "麦", "prob": 0.0}]], "intersection": [99313, 100711, 100807, 100894, 101382, 115733], "avg_prob": 0.584, "selected_text": "马", "decision": "APPEND", "reason": ""}, {"step": 2, "target_prefix": "这条河由马", "per_future_topk": [[{"text": "里", "prob": 0.998}, {"text": "利", "prob": 0.002}, {"text": "丽", "prob": 0.001}, {"text": "莉", "prob": 0.0}, {"text": "瑞", "prob": 0.0}], [{"text": "里", "prob": 0.998}, {"text": "利", "prob": 0.002}, {"text": "丽", "prob": 0.001}, {"text": "莉", "prob": 0.0}, {"text": "瑞", "prob": 0.0}], [{"text": "里", "prob": 0.999}, {"text": "利", "prob": 0.001}, {"text": "丽", "prob": 0.0}, {"text": "雷", "prob": 0.0}, {"text": "瑞", "prob": 0.0}], [{"text": "里", "prob": 1.0}, {"text": "利", "prob": 0.0}, {"text": "丽", "prob": 0.0}, {"text": "雷", "prob": 0.0}, {"text": "耶", "prob": 0.0}], [{"text": "里", "prob": 0.994}, {"text": "利", "prob": 0.005}, {"text": "瑟", "prob": 0.0}, {"text": "修", "prob": 0.0}, {"text": "雷", "prob": 0.0}], [{"text": "里", "prob": 0.995}, {"text": "利", "prob": 0.003}, {"text": "丽", "prob": 0.001}, {"text": "莉", "prob": 0.0}, {"text": "耶", "prob": 0.0}], [{"text": "里", "prob": 0.999}, {"text": "利", "prob": 0.001}, {"text": "丽", "prob": 0.0}, {"text": "莉", "prob": 0.0}, {"text": "雷", "prob": 0.0}], [{"text": "里", "prob": 0.998}, {"text": "丽", "prob": 0.001}, {"text": "利", "prob": 0.001}, {"text": "莉", "prob": 0.0}, {"text": "瑞", "prob": 0.0}], [{"text": "里", "prob": 0.999}, {"text": "利", "prob": 0.001}, {"text": "丽", "prob": 0.0}, {"text": "瑞", "prob": 0.0}, {"text": "雷", "prob": 0.0}], [{"text": "里", "prob": 0.996}, {"text": "利", "prob": 0.003}, {"text": "丽", "prob": 0.001}, {"text": "莉", "prob": 0.0}, {"text": "耶", "prob": 0.0}]], "intersection": [59532, 69249, 96465, 99686, 100705, 100921, 109097], "avg_prob": 0.997, "selected_text": "里", "decision": "APPEND", "reason": ""}, {"step": 3, "target_prefix": "这条河由马里", "per_future_topk": [[{"text": "韦", "prob": 0.993}, {"text": "沃", "prob": 0.005}, {"text": "瓦", "prob": 0.002}, {"text": "维尔", "prob": 0.0}, {"text": "维", "prob": 0.0}], [{"text": "韦", "prob": 0.987}, {"text": "沃", "prob": 0.01}, {"text": "瓦", "prob": 0.002}, {"text": "维尔", "prob": 0.0}, {"text": "维", "prob": 0.0}], [{"text": "韦", "prob": 0.951}, {"text": "沃", "prob": 0.042}, {"text": "瓦", "prob": 0.006}, {"text": "维尔", "prob": 0.001}, {"text": "维", "prob": 0.001}], [{"text": "韦", "prob": 0.979}, {"text": "沃", "prob": 0.016}, {"text": "瓦", "prob": 0.005}, {"text": "维尔", "prob": 0.0}, {"text": "维", "prob": 0.0}], [{"text": "韦", "prob": 0.962}, {"text": "沃", "prob": 0.029}, {"text": "瓦", "prob": 0.007}, {"text": "维尔", "prob": 0.001}, {"text": "维", "prob": 0.0}], [{"text": "韦", "prob": 0.986}, {"text": "沃", "prob": 0.01}, {"text": "瓦", "prob": 0.003}, {"text": "威", "prob": 0.0}, {"text": "维尔", "prob": 0.0}], [{"text": "韦", "prob": 0.959}, {"text": "沃", "prob": 0.033}, {"text": "瓦", "prob": 0.007}, {"text": "维尔", "prob": 0.0}, {"text": "维", "prob": 0.0}], [{"text": "韦", "prob": 0.981}, {"text": "沃", "prob": 0.014}, {"text": "瓦", "prob": 0.004}, {"text": "威", "prob": 0.0}, {"text": "维", "prob": 0.0}], [{"text": "韦", "prob": 0.926}, {"text": "沃", "prob": 0.067}, {"text": "瓦", "prob": 0.006}, {"text": "维尔", "prob": 0.001}, {"text": "威", "prob": 0.0}], [{"text": "韦", "prob": 0.97}, {"text": "沃", "prob": 0.02}, {"text": "瓦", "prob": 0.008}, {"text": "维尔", "prob": 0.0}, {"text": "威", "prob": 0.0}]], "intersection": [99479, 99627, 100556, 101190, 105181, 110840, 115369], "avg_prob": 0.969, "selected_text": "韦", "decision": "APPEND", "reason": ""}, {"step": 4, "target_prefix": "这条河由马里韦", "per_future_topk": [[{"text": "瑟", "prob": 0.974}, {"text": "思", "prob": 0.014}, {"text": "斯", "prob": 0.005}, {"text": "尔", "prob": 0.005}, {"text": "特", "prob": 0.002}], [{"text": "瑟", "prob": 0.984}, {"text": "思", "prob": 0.009}, {"text": "斯", "prob": 0.004}, {"text": "特", "prob": 0.002}, {"text": "尔", "prob": 0.001}], [{"text": "瑟", "prob": 0.972}, {"text": "思", "prob": 0.016}, {"text": "斯", "prob": 0.008}, {"text": "尔", "prob": 0.002}, {"text": "特", "prob": 0.001}], [{"text": "瑟", "prob": 0.964}, {"text": "思", "prob": 0.02}, {"text": "斯", "prob": 0.008}, {"text": "尔", "prob": 0.004}, {"text": "特", "prob": 0.003}], [{"text": "瑟", "prob": 0.986}, {"text": "思", "prob": 0.008}, {"text": "斯", "prob": 0.004}, {"text": "特", "prob": 0.002}, {"text": "尔", "prob": 0.001}], [{"text": "瑟", "prob": 0.981}, {"text": "思", "prob": 0.011}, {"text": "斯", "prob": 0.005}, {"text": "特", "prob": 0.002}, {"text": "尔", "prob": 0.001}], [{"text": "瑟", "prob": 0.975}, {"text": "思", "prob": 0.018}, {"text": "斯", "prob": 0.005}, {"text": "尔", "prob": 0.001}, {"text": "特", "prob": 0.001}], [{"text": "瑟", "prob": 0.933}, {"text": "思", "prob": 0.046}, {"text": "斯", "prob": 0.015}, {"text": "尔", "prob": 0.003}, {"text": "特", "prob": 0.002}], [{"text": "瑟", "prob": 0.972}, {"text": "思", "prob": 0.011}, {"text": "尔", "prob": 0.008}, {"text": "斯", "prob": 0.005}, {"text": "特", "prob": 0.003}], [{"text": "瑟", "prob": 0.956}, {"text": "思", "prob": 0.029}, {"text": "斯", "prob": 0.012}, {"text": "特", "prob": 0.002}, {"text": "尔", "prob": 0.001}]], "intersection": [65278, 90663, 99079, 99295, 100251, 100841, 104985, 105829, 107318], "avg_prob": 0.97, "selected_text": "瑟", "decision": "APPEND", "reason": ""}, {"step": 5, "target_prefix": "这条河由马里韦瑟", "per_future_topk": [[{"text": "·", "prob": 1.0}, {"text": "・", "prob": 0.0}, {"text": "•", "prob": 0.0}, {"text": "‧", "prob": 0.0}, {"text": " ·", "prob": 0.0}], [{"text": "·", "prob": 1.0}, {"text": "・", "prob": 0.0}, {"text": "•", "prob": 0.0}, {"text": " ·", "prob": 0.0}, {"text": "‧", "prob": 0.0}], [{"text": "·", "prob": 1.0}, {"text": "・", "prob": 0.0}, {"text": "•", "prob": 0.0}, {"text": "-", "prob": 0.0}, {"text": " ·", "prob": 0.0}], [{"text": "·", "prob": 1.0}, {"text": "・", "prob": 0.0}, {"text": "•", "prob": 0.0}, {"text": "-", "prob": 0.0}, {"text": "‧", "prob": 0.0}], [{"text": "·", "prob": 1.0}, {"text": "・", "prob": 0.0}, {"text": "•", "prob": 0.0}, {"text": "‧", "prob": 0.0}, {"text": " ·", "prob": 0.0}], [{"text": "·", "prob": 1.0}, {"text": "・", "prob": 0.0}, {"text": "•", "prob": 0.0}, {"text": "‧", "prob": 0.0}, {"text": " ·", "prob": 0.0}], [{"text": "·", "prob": 1.0}, {"text": "・", "prob": 0.0}, {"text": "•", "prob": 0.0}, {"text": " ·", "prob": 0.0}, {"text": "‧", "prob": 0.0}], [{"text": "·", "prob": 1.0}, {"text": "・", "prob": 0.0}, {"text": "•", "prob": 0.0}, {"text": "-", "prob": 0.0}, {"text": "‧", "prob": 0.0}], [{"text": "·", "prob": 1.0}, {"text": "・", "prob": 0.0}, {"text": "•", "prob": 0.0}, {"text": "‧", "prob": 0.0}, {"text": " ·", "prob": 0.0}], [{"text": "·", "prob": 1.0}, {"text": "・", "prob": 0.0}, {"text": "•", "prob": 0.0}, {"text": "‧", "prob": 0.0}, {"text": " ·", "prob": 0.0}]], "intersection": [12, 6667, 9274, 9592, 13935, 144492, 144498, 144568], "avg_prob": 1.0, "selected_text": "·", "decision": "APPEND", "reason": ""}, {"step": 6, "target_prefix": "这条河由马里韦瑟·", "per_future_topk": [[{"text": "刘", "prob": 0.999}, {"text": "路", "prob": 0.001}, {"text": "李", "prob": 0.0}, {"text": "劉", "prob": 0.0}, {"text": "利", "prob": 0.0}], [{"text": "刘", "prob": 1.0}, {"text": "路", "prob": 0.0}, {"text": "劉", "prob": 0.0}, {"text": "利", "prob": 0.0}, {"text": "李", "prob": 0.0}], [{"text": "刘", "prob": 0.999}, {"text": "路", "prob": 0.001}, {"text": "劉", "prob": 0.0}, {"text": "利", "prob": 0.0}, {"text": "李", "prob": 0.0}], [{"text": "刘", "prob": 1.0}, {"text": "路", "prob": 0.0}, {"text": "李", "prob": 0.0}, {"text": "劉", "prob": 0.0}, {"text": "利", "prob": 0.0}], [{"text": "刘", "prob": 0.999}, {"text": "路", "prob": 0.001}, {"text": "卢", "prob": 0.0}, {"text": "劉", "prob": 0.0}, {"text": "李", "prob": 0.0}], [{"text": "刘", "prob": 0.998}, {"text": "路", "prob": 0.002}, {"text": "劉", "prob": 0.0}, {"text": "李", "prob": 0.0}, {"text": "卢", "prob": 0.0}], [{"text": "刘", "prob": 0.999}, {"text": "路", "prob": 0.001}, {"text": "劉", "prob": 0.0}, {"text": "利", "prob": 0.0}, {"text": "李", "prob": 0.0}], [{"text": "刘", "prob": 0.999}, {"text": "路", "prob": 0.001}, {"text": "劉", "prob": 0.0}, {"text": "卢", "prob": 0.0}, {"text": "利", "prob": 0.0}], [{"text": "刘", "prob": 1.0}, {"text": "路", "prob": 0.0}, {"text": "卢", "prob": 0.0}, {"text": "劉", "prob": 0.0}, {"text": "李", "prob": 0.0}], [{"text": "刘", "prob": 0.998}, {"text": "路", "prob": 0.002}, {"text": "劉", "prob": 0.0}, {"text": "利", "prob": 0.0}, {"text": "李", "prob": 0.0}]], "intersection": [45995, 59532, 100339, 100351, 100809, 104654, 111070], "avg_prob": 0.999, "selected_text": "刘", "decision": "APPEND", "reason": ""}], "delta": "马里韦瑟·刘", "stop_reason": "max_consensus_steps"}]};
+
+// Full word sequence after ASR
+const ALL_WORDS = DEMO.full_source.replace(/\./g, '').split(' ');
+const WAIT_K = 5;
+
+// Each policy call in the trace fires AFTER we've read up to N words.
+// Call 1: observed = "The river was named by" (5 words)
+// Call 2: observed = "The river was named by Maryweather Lewis after his" (9 words)
+// → After call 2 hits max_consensus_steps, the rest is force-finished (we'll simulate).
+const POST_COMMIT_REST = "易斯以其表亲玛丽亚·伍德的名字命名。";
+
+const BASE_DELAY = {
+  word: 400,             // ms between ASR words
+  wait_k_pulse: 600,     // after reaching k words, flash before agent starts
+  futures_reveal: 900,   // time to show sampled futures
+  step_reveal: 700,      // time between topk reveal and intersection
+  commit: 500,           // after intersection computed, commit happens
+  between_steps: 400,    // between consecutive commit steps
+  between_calls: 900,    // between policy calls
+  force_finish_char: 180 // force-finish chars
+};
+
+let speed = 1;
+let playing = false;
+let animationAbort = { cancelled: false };
+
+const $ = (id) => document.getElementById(id);
+const sleep = (ms) => new Promise(res => {
+  const h = setTimeout(res, ms / speed);
+  animationAbort.handles = animationAbort.handles || [];
+  animationAbort.handles.push(h);
+});
+
+function setStageActive(stageId, active) {
+  ['stage-audio', 'stage-asr', 'stage-agent', 'stage-output'].forEach(s => $(s).classList.remove('active'));
+  if (active) $(stageId).classList.add('active');
+}
+
+function addLog(ts, msg, cls = '') {
+  const el = document.createElement('div');
+  el.className = 'log-line ' + cls;
+  el.innerHTML = `<span class="ts">[${ts}]</span>${msg}`;
+  $('log').appendChild(el);
+  $('log').scrollTop = $('log').scrollHeight;
+}
+
+function resetUI() {
+  $('source-words').innerHTML = '';
+  $('target-chars').innerHTML = '';
+  $('log').innerHTML = '';
+  $('futures-grid').innerHTML = '';
+  $('call-num').textContent = '—';
+  $('step-num').textContent = '—';
+  $('step-prefix').textContent = '(empty)';
+  $('intersection-display').textContent = '—';
+  $('decision-display').textContent = '—';
+  $('avgprob-display').textContent = '—';
+  $('tc-panel').classList.remove('active');
+  setStageActive(null);
+}
+
+function formatTime(ms) {
+  const s = (ms / 1000).toFixed(1);
+  return `${s}s`;
+}
+
+// Render source words up to index i (0-based word count)
+function showSourceUpTo(count, justAddedIdx = -1) {
+  const sw = $('source-words');
+  sw.innerHTML = '';
+  for (let i = 0; i < count; i++) {
+    const w = document.createElement('span');
+    w.className = 'word arrived' + (i === justAddedIdx ? ' new' : '');
+    w.textContent = ALL_WORDS[i];
+    sw.appendChild(w);
+    sw.appendChild(document.createTextNode(' '));
+  }
+  if (justAddedIdx >= 0) {
+    setTimeout(() => {
+      const newSpans = sw.querySelectorAll('.word.new');
+      newSpans.forEach(s => s.classList.remove('new'));
+    }, 800 / speed);
+  }
+}
+
+// Append a single Chinese char to target, with highlight
+function appendTarget(ch, highlight = true) {
+  const t = $('target-chars');
+  const span = document.createElement('span');
+  span.className = 'char committed' + (highlight ? ' just-committed' : '');
+  span.textContent = ch;
+  t.appendChild(span);
+  if (highlight) {
+    setTimeout(() => span.classList.remove('just-committed'), 900 / speed);
+  }
+}
+
+// Render the futures grid for a commit step
+function renderFutures(call, step) {
+  const grid = $('futures-grid');
+  grid.innerHTML = '';
+  const intersectionSet = new Set(step.intersection);
+  const winnerText = step.selected_text;
+
+  for (let i = 0; i < call.futures.length; i++) {
+    const future = call.futures[i];
+    const topk = step.per_future_topk[i] || [];
+
+    const card = document.createElement('div');
+    card.className = 'future-card';
+
+    const preview = document.createElement('div');
+    preview.className = 'future-preview';
+    preview.textContent = `f${i+1}: "${future}"`;
+    preview.title = future;
+    card.appendChild(preview);
+
+    const kList = document.createElement('div');
+    kList.className = 'future-topk';
+    topk.slice(0, 4).forEach(tok => {
+      const t = document.createElement('div');
+      t.className = 'topk-token';
+      // Mark if in intersection — we don't have ids in flat form, use text match
+      // intersection list contains token IDs; match by position (step.intersection is ID list)
+      // Simplification: mark by text — best-effort visualization
+      t.innerHTML = `<span>${tok.text}</span><span class="topk-prob">${tok.prob.toFixed(3)}</span>`;
+      t.dataset.text = tok.text;
+      kList.appendChild(t);
+    });
+    card.appendChild(kList);
+    grid.appendChild(card);
+  }
+}
+
+// Highlight intersection / winner on the already-rendered grid
+function highlightIntersection(step) {
+  const winnerText = step.selected_text || '';
+  // Collect all tokens that appear in ≥ threshold number of futures (approx intersection)
+  // Since we have intersection IDs not texts, use a practical proxy: tokens present in all futures' top-k
+  const counts = {};
+  $('futures-grid').querySelectorAll('.future-card').forEach(card => {
+    const seen = new Set();
+    card.querySelectorAll('.topk-token').forEach(t => {
+      const txt = t.dataset.text;
+      if (!seen.has(txt)) { counts[txt] = (counts[txt] || 0) + 1; seen.add(txt); }
+    });
+  });
+  const K = $('futures-grid').querySelectorAll('.future-card').length;
+  const sharedTokens = Object.keys(counts).filter(t => counts[t] === K);
+
+  $('futures-grid').querySelectorAll('.topk-token').forEach(el => {
+    const txt = el.dataset.text;
+    if (sharedTokens.includes(txt)) el.classList.add('in-intersection');
+    if (txt === winnerText && step.decision === 'APPEND') el.classList.add('winner');
+  });
+  return sharedTokens;
+}
+
+async function playCommitStep(callIdx, call, step) {
+  if (animationAbort.cancelled) return;
+  $('call-num').textContent = callIdx + 1;
+  $('step-num').textContent = step.step;
+  $('step-prefix').textContent = step.target_prefix || '(empty)';
+  $('tc-panel').classList.add('active');
+
+  // 1. Reveal futures' top-k
+  renderFutures(call, step);
+  await sleep(BASE_DELAY.step_reveal);
+  if (animationAbort.cancelled) return;
+
+  // 2. Highlight intersection
+  const sharedTokens = highlightIntersection(step);
+  const intersectionText = sharedTokens.length > 0 ? sharedTokens.map(t=>`「${t}」`).join(' ') : '∅ (empty)';
+  $('intersection-display').textContent = intersectionText;
+
+  const dec = $('decision-row');
+  dec.classList.remove('append', 'read');
+  if (step.decision === 'APPEND') {
+    dec.classList.add('append');
+    $('decision-display').textContent = `APPEND 「${step.selected_text}」`;
+    $('avgprob-display').textContent = step.avg_prob != null ? step.avg_prob.toFixed(3) : '—';
+  } else {
+    dec.classList.add('read');
+    $('decision-display').textContent = 'READ more source';
+    $('avgprob-display').textContent = '—';
+  }
+
+  await sleep(BASE_DELAY.commit);
+  if (animationAbort.cancelled) return;
+
+  // 3. Commit action
+  if (step.decision === 'APPEND') {
+    // append each char of selected_text (usually 1, sometimes 2 like "这条")
+    for (const ch of step.selected_text) {
+      appendTarget(ch, true);
+      await sleep(120);
+    }
+    addLog(`step ${step.step}`, `∩ = {${sharedTokens.map(t=>`「${t}」`).join(', ')}} → APPEND 「${step.selected_text}」 (avg prob ${step.avg_prob.toFixed(3)})`, 'append');
+  } else {
+    addLog(`step ${step.step}`, `∩ = ∅ → READ more source`, 'read');
+  }
+
+  await sleep(BASE_DELAY.between_steps);
+}
+
+async function playPolicyCall(callIdx, call) {
+  if (animationAbort.cancelled) return;
+  setStageActive('stage-agent');
+  addLog('phase', `━━ Policy call ${callIdx + 1} · observed = "${call.observed_src}" · committed = "${call.committed_before || '(empty)'}"`, 'phase');
+
+  for (const step of call.steps) {
+    if (animationAbort.cancelled) return;
+    await playCommitStep(callIdx, call, step);
+  }
+
+  addLog('stop', `stop_reason: ${call.stop_reason}`, 'phase');
+  await sleep(BASE_DELAY.between_calls);
+}
+
+async function play() {
+  if (playing) return;
+  playing = true;
+  animationAbort = { cancelled: false, handles: [] };
+  $('btn-play').textContent = '⏸ Pause';
+
+  resetUI();
+
+  // ── Phase: audio + ASR streaming ──
+  setStageActive('stage-audio');
+  await sleep(500);
+
+  setStageActive('stage-asr');
+  addLog('phase', `━━ Whisper-small ASR: streaming English from audio`, 'phase');
+
+  // Stream first batch up to call 1 observed length
+  const call1 = DEMO.policy_calls[0];
+  const n_words_call1 = call1.observed_src.split(' ').length;
+  for (let i = 0; i < n_words_call1; i++) {
+    if (animationAbort.cancelled) { playing = false; return; }
+    showSourceUpTo(i + 1, i);
+    addLog(`word ${i+1}`, `ASR emits: "${ALL_WORDS[i]}"`);
+    await sleep(BASE_DELAY.word);
+  }
+
+  // Wait-k triggered
+  await sleep(BASE_DELAY.wait_k_pulse);
+
+  // ── Policy call 1 ──
+  if (animationAbort.cancelled) { playing = false; return; }
+  await playPolicyCall(0, call1);
+
+  // ── More ASR words before call 2 ──
+  setStageActive('stage-asr');
+  const call2 = DEMO.policy_calls[1];
+  const n_words_call2 = call2.observed_src.split(' ').length;
+  for (let i = n_words_call1; i < n_words_call2; i++) {
+    if (animationAbort.cancelled) { playing = false; return; }
+    showSourceUpTo(i + 1, i);
+    addLog(`word ${i+1}`, `ASR emits: "${ALL_WORDS[i]}"`);
+    await sleep(BASE_DELAY.word);
+  }
+
+  // ── Policy call 2 ──
+  if (animationAbort.cancelled) { playing = false; return; }
+  await playPolicyCall(1, call2);
+
+  // ── Remaining ASR + force-finish ──
+  setStageActive('stage-asr');
+  for (let i = n_words_call2; i < ALL_WORDS.length; i++) {
+    if (animationAbort.cancelled) { playing = false; return; }
+    showSourceUpTo(i + 1, i);
+    addLog(`word ${i+1}`, `ASR emits: "${ALL_WORDS[i]}"`);
+    await sleep(BASE_DELAY.word);
+  }
+
+  // Force-finish: translator finishes from committed prefix
+  setStageActive('stage-agent');
+  addLog('phase', `━━ Source exhausted · force-finish continuation from committed prefix`, 'phase');
+  $('tc-panel').classList.remove('active');
+
+  await sleep(400);
+  setStageActive('stage-output');
+  for (const ch of POST_COMMIT_REST) {
+    if (animationAbort.cancelled) { playing = false; return; }
+    appendTarget(ch, true);
+    await sleep(BASE_DELAY.force_finish_char);
+  }
+
+  addLog('done', `━━ DONE. Final prediction: ${DEMO.final_prediction}`, 'phase');
+  setStageActive(null);
+  playing = false;
+  $('btn-play').textContent = '▶ Play';
+}
+
+function stop() {
+  playing = false;
+  animationAbort.cancelled = true;
+  (animationAbort.handles || []).forEach(h => clearTimeout(h));
+  $('btn-play').textContent = '▶ Play';
+}
+
+$('btn-play').addEventListener('click', () => {
+  if (playing) stop();
+  else play();
+});
+$('btn-restart').addEventListener('click', () => {
+  stop();
+  setTimeout(() => play(), 100);
+});
+document.querySelectorAll('.speed').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('.speed').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    speed = parseFloat(b.dataset.speed);
+  });
+});
+
+resetUI();
+addLog('ready', 'Click ▶ Play to start the demo. Each commit decision below is from real trace data.', 'phase');
+</script>
+</body>
+</html>

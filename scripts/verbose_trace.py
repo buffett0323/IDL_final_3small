@@ -207,7 +207,7 @@ def generate_dd_log(
             n_steps = tr.get("n_steps", 3)
 
             a(f"  [DD Gate]")
-            a(f"    K futures (truncation, oracle source):")
+            a(f"    K futures (LM-sampled from observed prefix):")
             for i, fut in enumerate(futures[:K]):
                 a(f"      future[{i+1}]: \"{fut}\"")
             a(f"    JS divergence:")

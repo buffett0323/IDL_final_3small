@@ -6,6 +6,17 @@ CMU 11-785 Introduction to Deep Learning — Final Project
 
 STTR extends the standard **wait-k** simultaneous translation policy with **uncertainty-gated selective compute**. The key idea: most translations are easy (the model is confident), so we only spend extra compute on the hard ones.
 
+### Which models do what? (don’t mix the two tracks)
+
+| Track | Agent file | Who translates EN→ZH? | Who generates English *futures*? | Commit semantics |
+|-------|------------|----------------------|-----------------------------------|------------------|
+| **Semantic LCP (recommended story for SiMT)** | `agents/semantic_lcp_agent.py` | **Qwen3-30B-Instruct** via vLLM (Table B) | **Qwen3-4B-Base** — causal LM over English only; **not** a translator | Maintains `_committed`; only emits Chinese **beyond** quorum-agreed prefix |
+| **NLLB + DD / LM-DD** | `agents/sttr_enzh_agent.py` | **NLLB-200-distilled-600M** always | With `--dd-gate` / `--dd-veto`: **Qwen3-4B-Base** (or any `--dd-future-lm`) samples English futures from the **observed prefix only**; NLLB scores each | Default path is **prefix-anchored**: committed Chinese is preserved while DD / uncertainty / LCP operate on the suffix |
+
+**Rule of thumb**: if the slide says “Qwen4B”, it is **only** sampling hypothetical **English** continuations. **NLLB never samples futures**; **Qwen30B (vLLM) is unused** on the NLLB track unless you pass `--qwen-model-path` for optional rerank.
+
+**Fairness rule for Semantic LCP**: compare **Semantic LCP** to **Qwen30B direct** on the same `wmt500` slice. The NLLB row is a small-model anchor, not the headline baseline for the Qwen track.
+
 ### Current mainline: STTR-v2 (EN->ZH)
 
 The project has evolved from beam-search refinement (v1) to a more principled approach:
@@ -92,6 +103,8 @@ scripts/
   download_enzh_data.py # Download WMT19 En-Zh test sets (char-segmented)
   run_enzh_smoke.sh    # Quick 5-sentence EN->ZH smoke test
   run_enzh_full.sh     # Full WMT19 EN->ZH experiment (optional --with-qwen)
+  run_wmt500_nllb_baseline.sbatch  # NLLB k=5 on wmt500 (same-N baseline vs Qwen rows)
+  compare_full.py      # Aggregate outputs/full → full_comparison.md + 2-panel figures
   score_baselines.py   # Score output directories (BLEU + AL)
   run_baseline.sh      # Legacy: wait-k baselines for k in {3,5,7,9}
 data/
@@ -174,8 +187,6 @@ bash scripts/run_baseline.sh
 
 ## Next Steps
 
-- Run full WMT19 En-Zh tau sweep and find optimal threshold
-- Pareto frontier plot: BLEU vs AL across methods
-- Error analysis: do LCP commits correlate with actual hard cases?
-- Tune max-extra-reads and num-candidates
-- Compare character-level vs subword-level emission
+- **Same-500 slice**: submit `sbatch scripts/run_wmt500_nllb_baseline.sbatch` so `compare_full.py` can put **NLLB k=5 on `wmt500`** next to Qwen/SemLCP in Table B (fair ΔBLEU vs a small-model baseline on the **same** 500 sentences).
+- Regenerate summaries after any new `outputs/full/*/scores`: `python scripts/compare_full.py` (two-panel **BLEU vs AL** and BLEU bar charts).
+- Optional: full-1997 Qwen/SemLCP (expensive), COMET, latency-controlled τ / k sweep, CoVoST at scale.

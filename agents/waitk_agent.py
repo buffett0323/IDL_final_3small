@@ -49,7 +49,17 @@ Instance.summarize = _patched_summarize
 
 # Monkey-patch: SimulEval 1.1.0 latency scorers divide by zero on empty translations
 from simuleval.evaluator.scorers.latency_scorer import LatencyScorer
+import simuleval.evaluator.scorers.latency_scorer as _latency_scorer_module
+import statistics as _statistics
 from statistics import mean
+
+
+def _safe_latency_mean(seq):
+    return _statistics.mean(seq) if seq else 0.0
+
+
+_latency_scorer_module.mean = _safe_latency_mean
+
 
 def _patched_scorer_call(self, instances):
     scores = []

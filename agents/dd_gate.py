@@ -1,16 +1,13 @@
 """Distribution Divergence (DD) gate for streaming EN->ZH translation.
 
 Computes avg JS divergence across K future-conditioned Chinese next-token
-distributions.  Reuses the agent's already-loaded base model — no extra
-model loading needed.
+distributions.  Reuses the agent's already-loaded base model for those
+distributions; English futures come from a separate causal LM (no peeking
+at reference source beyond the streaming prefix).
 
 Key design:
-  - futures (oracle mode): sample K English "futures" from the FULL source
-    sentence by revealing 1..K additional source words beyond prefix_len
-    (truncation mode, deterministic).  Requires oracle_source_words.
-  - futures (lm_sample mode): use a separate English LM to generate K
-    diverse continuations of the current prefix — no oracle needed.
-    This is the realistic inference-time mode.
+  - futures: a small English causal LM samples K continuations of the
+    **currently observed** source prefix only (inference-time; not oracle).
   - distributions: for each future, run the base MT model to obtain the next
     Chinese token distribution (first N steps).
   - DD score: average pairwise JS divergence across the K distributions,
@@ -23,22 +20,9 @@ Multi-step support:
   - causal LM (Qwen4B-Base): autoregressive single-pass, n_steps distributions
     starting from the "Chinese:" boundary. K futures batched via left-padding.
 
-Oracle source requirement (oracle mode only):
-  - In online streaming, the agent only sees words 0..prefix_len-1. To get
-    genuine future diversity, we pass oracle_source_words (the full sentence,
-    loaded from the source file at startup). This gives an upper bound on what
-    a perfect English future-sampling LM could achieve, and is the correct
-    first experiment before implementing a real LM-based future sampler.
-
-LM-sample mode:
-  - future_lm / future_lm_tokenizer: a separate causal LM used ONLY to
-    generate English future continuations (not to translate).
-  - Recommended: Qwen3-4B-Base or similar (small, fast, decent English).
-  - Temperature sampling with T=0.9 provides diverse futures.
-  - Division of labour:
-      future LM  -> generates K English futures (plausible continuations)
-      MT model   -> computes Chinese next-token distributions per future
-      DD gate    -> compares distributions, decides READ/COMMIT
+Future LM:
+  - future_lm / future_lm_tokenizer: causal LM used ONLY for English
+    continuations (not to translate).  Recommended: Qwen3-4B-Base or similar.
 
 Policy score hierarchy:
   - avg_js_first1 : JS at step 1 only (fastest proxy).
@@ -155,33 +139,6 @@ def sample_lm_futures(
     while len(futures) < K:
         futures.append(prefix_text)
 
-    return futures[:K]
-
-
-def sample_truncation_futures(
-    oracle_source_words: list[str], prefix_len: int, K: int
-) -> list[str]:
-    """Sample K futures by revealing 1..K more source words after prefix_len.
-
-    IMPORTANT: oracle_source_words must be the FULL sentence (not just the
-    observed prefix).  In a streaming agent, pass the full source loaded from
-    the source file at startup — do NOT pass self.states.source (that is only
-    the observed prefix and makes all futures identical, giving JS=0).
-
-    Deterministic and fast.  All futures are nested prefixes of one another
-    (tests same-path prefix-extension stability).
-    """
-    total = len(oracle_source_words)
-    futures = []
-    for k in range(1, K + 1):
-        end = min(prefix_len + k, total)
-        futures.append(" ".join(oracle_source_words[:end]))
-        if end >= total:
-            break
-    # Pad remaining slots with the full sentence
-    full = " ".join(oracle_source_words)
-    while len(futures) < K:
-        futures.append(full)
     return futures[:K]
 
 
@@ -339,76 +296,54 @@ def _avg_js_over_futures_and_steps(
 def compute_dd_score(
     model,
     tokenizer,
-    oracle_source_words: list[str],
-    prefix_len: int,
+    prefix_words: list[str],
     device: str,
     *,
     causal_lm: bool,
+    future_lm,
+    future_lm_tokenizer,
     forced_bos_token_id: Optional[int] = None,
     prompt_template: Optional[str] = None,
     K: int = 4,
     n_steps: int = 3,
-    # ── LM-sample futures ──────────────────────────────────────────────────
-    future_mode: str = "oracle",        # "oracle" | "lm_sample"
-    future_lm=None,                     # causal LM for English future generation
-    future_lm_tokenizer=None,           # tokenizer for future_lm
-    future_words: int = 15,             # tokens to generate per future
-    future_temperature: float = 0.9,    # sampling temperature for diversity
+    future_words: int = 15,
+    future_temperature: float = 0.9,
 ) -> dict[str, float]:
-    """Compute the DD score for the current source prefix.
+    """Compute the DD score for the current **observed** source prefix.
 
-    Two future-sampling modes:
-
-    oracle (default):
-        Uses the FULL oracle source sentence to deterministically reveal
-        1..K more words.  Requires oracle_source_words (not truncated).
-        This is the upper-bound experiment.
-
-    lm_sample:
-        Uses future_lm to generate K diverse English continuations of the
-        current prefix — NO oracle required.  This is the realistic mode
-        for actual deployment.  future_lm / future_lm_tokenizer must be set.
+    English futures are always sampled by ``future_lm`` from the prefix only
+    (no reference-source oracle).
 
     Policy gate scalar: avg_js_firstN  (average JS over first n_steps).
-    Also returns avg_js_first1 / avg_js_first3 / avg_js_first5 for logging.
 
     Args:
-        model / tokenizer   : already-loaded base MT model (NLLB or Qwen).
-        oracle_source_words : FULL source sentence split into words (oracle mode).
-                              Ignored in lm_sample mode.
-        prefix_len          : number of source words currently observed.
-        device              : PyTorch device string.
-        causal_lm           : True for decoder-only MT model (Qwen), False for NLLB.
+        model / tokenizer : already-loaded base MT model (NLLB or Qwen).
+        prefix_words : words received so far (streaming prefix); ``prefix_text``
+            is ``" ".join(prefix_words)``.
+        device : PyTorch device string.
+        causal_lm : True for decoder-only MT model (Qwen), False for NLLB.
+        future_lm / future_lm_tokenizer : English causal LM for K continuations.
         forced_bos_token_id : NLLB target language BOS id (None for causal).
-        prompt_template     : few-shot prompt string with {source} placeholder.
-        K                   : number of futures to sample.
-        n_steps             : number of MT decoding steps to average JS over.
-        future_mode         : "oracle" (default) or "lm_sample".
-        future_lm           : causal LM for future generation (lm_sample mode).
-        future_lm_tokenizer : tokenizer for future_lm.
-        future_words        : max tokens to generate per sampled future.
-        future_temperature  : sampling temperature (higher = more diverse).
+        prompt_template : few-shot prompt string with {source} placeholder (causal).
+        K, n_steps, future_words, future_temperature : sampling / JS depth.
 
     Returns dict with keys:
         avg_js_first1, avg_js_first3, avg_js_first5, avg_js_firstN,
-        per_step_js, K, n_steps, futures, future_mode.
+        per_step_js, K, n_steps, futures, future_mode (always \"lm_sample\").
     """
-    if future_mode == "lm_sample":
-        assert future_lm is not None and future_lm_tokenizer is not None, (
-            "future_lm and future_lm_tokenizer must be set when future_mode='lm_sample'"
-        )
-        prefix_text = " ".join(oracle_source_words[:prefix_len])
-        futures = sample_lm_futures(
-            prefix_text,
-            future_lm,
-            future_lm_tokenizer,
-            device,
-            K=K,
-            future_words=future_words,
-            temperature=future_temperature,
-        )
-    else:
-        futures = sample_truncation_futures(oracle_source_words, prefix_len, K)
+    assert future_lm is not None and future_lm_tokenizer is not None, (
+        "future_lm and future_lm_tokenizer are required for DD (LM-sampled futures only)"
+    )
+    prefix_text = " ".join(prefix_words)
+    futures = sample_lm_futures(
+        prefix_text,
+        future_lm,
+        future_lm_tokenizer,
+        device,
+        K=K,
+        future_words=future_words,
+        temperature=future_temperature,
+    )
 
     if causal_lm:
         assert prompt_template is not None, "prompt_template required for causal LM"
@@ -424,5 +359,5 @@ def compute_dd_score(
     stats["K"] = K
     stats["n_steps"] = n_steps
     stats["futures"] = futures
-    stats["future_mode"] = future_mode
+    stats["future_mode"] = "lm_sample"
     return stats
