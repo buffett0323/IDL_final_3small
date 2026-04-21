@@ -61,88 +61,99 @@ plt.savefig(OUT / "waitk_plateau.png", format="png", dpi=200, bbox_inches="tight
 plt.close()
 print(f"✓ waitk_plateau: BLEU range {min(bleus)}-{max(bleus)}, AL range {min(als)}-{max(als)}")
 
-# ─── Fig 2 · Headline scatter — CoVoST + main methods ───
-# Using current CoVoST-100 data (will update when CoVoST-1997 finishes)
-fig, ax = plt.subplots(figsize=(8, 5), dpi=150)
+# ─── Fig 2 · Headline scatter — CoVoST-1997 main methods ───
+# Full CoVoST-1997 results from outputs/covost1997/*/scores.
+fig, ax = plt.subplots(figsize=(9.2, 5.6), dpi=180)
 
 methods = [
-    # (label, AL, BLEU, color, size, is_ours)
-    ("NLLB greedy",          5.60, 24.63, "#9ca3af", 80,  False),
-    ("NLLB + DD veto",       7.90, 29.39, "#9ca3af", 80,  False),
-    ("Qwen direct",          5.60, 30.23, "#4a5cff", 110, False),
-    ("+ DD + JS",            6.13, 31.21, "#7b49ff", 110, False),
-    ("+ Future LCP",         5.78, 34.17, "#f59e0b", 120, False),
-    ("+ Token Consensus ⭐",  5.66, 34.92, "#22c55e", 180, True),
+    # label, AL, BLEU, COMET, color, marker, size, family
+    ("NLLB greedy",       5.64, 22.27, 0.729, "#9ca3af", "o", 90,  "small baseline"),
+    ("NLLB + DD veto",    7.95, 26.88, 0.761, "#6b7280", "o", 90,  "small baseline"),
+    ("Qwen direct",       5.64, 32.18, 0.795, "#2563eb", "o", 130, "Qwen baseline"),
+    ("+ DD/JS gate",      6.21, 33.27, 0.807, "#7c3aed", "o", 120, "future-aware"),
+    ("+ Future LCP",      5.88, 35.05, 0.823, "#d97706", "o", 120, "future-aware"),
+    ("+ Token Consensus", 5.76, 35.85, 0.832, "#059669", "*", 360, "ours"),
 ]
 
-for label, al, bleu, color, size, ours in methods:
-    edge = "#047857" if ours else "white"
-    lw = 2.5 if ours else 1.0
-    ax.scatter(al, bleu, s=size, c=color, edgecolors=edge, linewidths=lw,
-               zorder=5 if ours else 3)
+# Light guide region: lower AL is better.
+ax.axvspan(5.45, 6.05, color="#ecfdf5", alpha=0.75, zorder=0)
 
-# Label positions — careful to avoid overlap
-for label, al, bleu, color, size, ours in methods:
-    if label == "NLLB greedy":
-        ax.annotate(label, xy=(al, bleu), xytext=(10, 8), textcoords="offset points",
-                    fontsize=10, color="#4b5563")
-    elif label == "NLLB + DD veto":
-        ax.annotate(label, xy=(al, bleu), xytext=(10, -4), textcoords="offset points",
-                    fontsize=10, color="#4b5563")
-    elif label == "Qwen direct":
-        ax.annotate(label, xy=(al, bleu), xytext=(10, -14), textcoords="offset points",
-                    fontsize=11, color="#4a5cff", fontweight="600")
-    elif label == "+ DD + JS":
-        ax.annotate(label, xy=(al, bleu), xytext=(10, 0), textcoords="offset points",
-                    fontsize=11, color="#7b49ff", fontweight="600")
-    elif label == "+ Future LCP":
-        ax.annotate(label, xy=(al, bleu), xytext=(10, 0), textcoords="offset points",
-                    fontsize=11, color="#b45309", fontweight="600")
-    elif "Token Consensus" in label:
-        ax.annotate(label, xy=(al, bleu), xytext=(15, 5), textcoords="offset points",
-                    fontsize=13, color="#047857", fontweight="700")
+for label, al, bleu, comet, color, marker, size, family in methods:
+    edge = "#064e3b" if family == "ours" else "white"
+    lw = 1.8 if family == "ours" else 1.1
+    ax.scatter(al, bleu, s=size, marker=marker, c=color, edgecolors=edge,
+               linewidths=lw, zorder=5 if family == "ours" else 3)
 
-# Dashed arrow from direct → TC showing the improvement
+# Clear labels. Keep every label near its point, but avoid line crossings.
+label_style = dict(fontsize=11, bbox=dict(boxstyle="round,pad=0.18",
+                                          fc="white", ec="none", alpha=0.82))
+offsets = {
+    "NLLB greedy": (10, -6, "#6b7280", "left"),
+    "NLLB + DD veto": (10, -4, "#4b5563", "left"),
+    "Qwen direct": (10, -16, "#1d4ed8", "left"),
+    "+ DD/JS gate": (12, -2, "#6d28d9", "left"),
+    "+ Future LCP": (12, -6, "#b45309", "left"),
+    "+ Token Consensus": (24, -1, "#047857", "left"),
+}
+for label, al, bleu, comet, color, marker, size, family in methods:
+    dx, dy, txt_color, ha = offsets[label]
+    fs = 13 if family == "ours" else 11
+    fw = "800" if family == "ours" else "600"
+    ax.annotate(label, xy=(al, bleu), xytext=(dx, dy), textcoords="offset points",
+                ha=ha, va="center", color=txt_color, fontsize=fs,
+                fontweight=fw, bbox=label_style["bbox"], zorder=7)
+
+# Main story arrow: compare against the strong Qwen direct baseline, not NLLB.
+qwen_al, qwen_bleu = 5.64, 32.18
+tc_al, tc_bleu = 5.76, 35.85
 ax.annotate("",
-            xy=(5.66, 34.9), xytext=(5.60, 30.5),
-            arrowprops=dict(arrowstyle="->", color="#22c55e", lw=1.8, alpha=0.6,
-                            linestyle="--"))
-ax.text(4.5, 32.5, "+4.69 BLEU\n+0.043 COMET\n≈ 0 AL cost",
-        fontsize=10, color="#047857", ha="center", fontweight="600",
-        bbox=dict(boxstyle="round,pad=0.4", facecolor="#ecfdf5",
-                  edgecolor="#86efac", lw=1))
+            xy=(tc_al, tc_bleu - 0.08), xytext=(qwen_al, qwen_bleu + 0.22),
+            arrowprops=dict(arrowstyle="->", color="#059669", lw=2.6,
+                            mutation_scale=18, shrinkA=8, shrinkB=8))
+ax.text(6.55, 31.0,
+        "TC vs Qwen direct:\n+3.67 BLEU\n+0.12 AL",
+        fontsize=11.5, color="#065f46", ha="left", va="center", fontweight="700",
+        bbox=dict(boxstyle="round,pad=0.45", facecolor="#ecfdf5",
+                  edgecolor="#6ee7b7", lw=1.2))
 
-ax.set_xlabel("Average Lagging (AL)  →  latency", fontsize=13, color="#374151")
-ax.set_ylabel("BLEU  ↑   quality", fontsize=13, color="#374151")
-ax.set_title("CoVoST-2 EN→ZH cascaded ST · quality–latency frontier",
-             fontsize=14, color="#0f1220", pad=14, fontweight="600")
-ax.text(0.99, -0.14, "Pilot 100 utt · CoVoST-1997 rerun in progress",
-        transform=ax.transAxes, ha="right", fontsize=9, color="#9ca3af",
-        style="italic")
+ax.set_xlabel("Average Lagging (AL, source words)  →  lower is better",
+              fontsize=13, color="#111827", labelpad=8)
+ax.set_ylabel("BLEU  →  higher is better", fontsize=13, color="#111827", labelpad=8)
+ax.set_title("CoVoST-2 EN→ZH cascaded speech translation: quality vs latency",
+             fontsize=15, color="#111827", pad=14, fontweight="800")
+ax.text(0.985, 0.025,
+        "Full CoVoST-1997 · Whisper-small ASR → streaming text agent",
+        transform=ax.transAxes, ha="right", va="bottom",
+        fontsize=9.5, color="#6b7280",
+        bbox=dict(boxstyle="round,pad=0.18", facecolor="white",
+                  edgecolor="none", alpha=0.75))
 
-ax.grid(True, alpha=0.3, linestyle="--")
-ax.set_xlim(3.5, 9.5)
-ax.set_ylim(22, 37)
-ax.set_facecolor("#fafbfc")
+ax.grid(True, alpha=0.28, linestyle="--", linewidth=0.8)
+ax.set_xlim(4.45, 8.55)
+ax.set_ylim(21.4, 36.9)
+ax.set_xticks([5, 6, 7, 8])
+ax.set_yticks([22, 26, 30, 34, 36])
+ax.tick_params(axis="both", labelsize=11, colors="#374151")
+ax.set_facecolor("#fbfdff")
 fig.patch.set_facecolor("white")
 
 for spine in ax.spines.values():
-    spine.set_color("#d1d5db")
+    spine.set_color("#cbd5e1")
+    spine.set_linewidth(1.1)
 
-# Annotate "top-left = better" guide
-ax.text(0.02, 0.98, "↖ better (higher quality, lower latency)",
+ax.text(0.02, 0.98, "Best region: upper-left",
         transform=ax.transAxes, ha="left", va="top", fontsize=10,
-        color="#6b7280", style="italic",
-        bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
-                  edgecolor="#e5e7eb", lw=0.8))
+        color="#374151", fontweight="600",
+        bbox=dict(boxstyle="round,pad=0.28", facecolor="white",
+                  edgecolor="#d1d5db", lw=0.9))
 
-plt.tight_layout()
+plt.tight_layout(pad=1.0)
 plt.savefig(OUT / "covost_headline.svg", format="svg", bbox_inches="tight",
             facecolor="white")
 plt.savefig(OUT / "covost_headline.png", format="png", dpi=200, bbox_inches="tight",
             facecolor="white")
 plt.close()
-print(f"✓ covost_headline: 6 methods, TC at top-left corner")
+print("✓ covost_headline: full CoVoST-1997, clear Qwen-direct → TC story")
 
 # ─── Fig 3 · TC ablations combined (K + top-k) ───
 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 4), dpi=150)

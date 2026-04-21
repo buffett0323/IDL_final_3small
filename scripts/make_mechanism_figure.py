@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Generate the core mechanism diagram for Token Consensus Decoding.
 
-Shows: observed source → K=10 sampled futures → Qwen30B next-token distributions
+Shows: observed source → K=10 sampled futures → Qwen3-30B next-token distributions
 → hard intersection → safe commit.
 """
 from __future__ import annotations
@@ -9,19 +9,22 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
+from matplotlib.font_manager import FontProperties
 from matplotlib.patches import FancyBboxPatch, FancyArrowPatch, Rectangle
 from pathlib import Path
 
 OUT = Path("/data/user_data/haolingp/IDL_final_3small/outputs/slide_figures")
 OUT.mkdir(parents=True, exist_ok=True)
+CJK_FONT_PATH = Path("/usr/share/fonts/google-droid-sans-fonts/DroidSansFallbackFull.ttf")
+CJK_FONT = FontProperties(fname=str(CJK_FONT_PATH)) if CJK_FONT_PATH.exists() else None
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Fig A — Token Consensus mechanism diagram
 # ═══════════════════════════════════════════════════════════════════════════
 
-fig, ax = plt.subplots(figsize=(15, 8), dpi=150)
-ax.set_xlim(0, 100)
-ax.set_ylim(0, 60)
+fig, ax = plt.subplots(figsize=(17, 9), dpi=150)
+ax.set_xlim(0, 125)
+ax.set_ylim(0, 66)
 ax.axis("off")
 fig.patch.set_facecolor("white")
 
@@ -35,7 +38,8 @@ C_GRAY   = "#6b7280"
 C_AMBER  = "#f59e0b"
 
 def box(x, y, w, h, text, facecolor="#fff", edgecolor=C_BLUE, text_color=None,
-        fontsize=10, fontweight="normal", ax=ax, rounded=True, zorder=2):
+        fontsize=10, fontweight="normal", ax=ax, rounded=True, zorder=2,
+        fontproperties=None):
     style = "round,pad=0.02,rounding_size=0.5" if rounded else "square,pad=0.02"
     r = FancyBboxPatch((x, y), w, h, boxstyle=style,
                        facecolor=facecolor, edgecolor=edgecolor,
@@ -43,7 +47,7 @@ def box(x, y, w, h, text, facecolor="#fff", edgecolor=C_BLUE, text_color=None,
     ax.add_patch(r)
     ax.text(x + w/2, y + h/2, text, ha="center", va="center",
             fontsize=fontsize, color=text_color or "#1a1a2e",
-            fontweight=fontweight, zorder=zorder+1)
+            fontweight=fontweight, fontproperties=fontproperties, zorder=zorder+1)
 
 def arrow(x1, y1, x2, y2, color=C_GRAY, lw=1.2, style="->", alpha=0.6, zorder=1):
     a = FancyArrowPatch((x1, y1), (x2, y2), arrowstyle=style,
@@ -52,34 +56,39 @@ def arrow(x1, y1, x2, y2, color=C_GRAY, lw=1.2, style="->", alpha=0.6, zorder=1)
     ax.add_patch(a)
 
 # ─── Top title ───
-ax.text(50, 57, "Token Consensus Decoding · one commit step",
+ax.text(62.5, 63.2, "Token Consensus Decoding · one commit step",
         ha="center", fontsize=17, fontweight="700", color="#0f1220")
-ax.text(50, 54, "Sample K=10 English futures → query next-token distributions "
-        "→ intersect → commit only on unanimous agreement",
+ax.text(62.5, 60.4, "Source prefix enters Base sampler → futures pass through Instruct scorer → intersect token-ID sets → commit shared token",
         ha="center", fontsize=11, color=C_GRAY, style="italic")
 
-# ═══ Column 1: Observed source ═══
+# ═══ Column 1: Streaming state ═══
 col1_x = 2
-box(col1_x, 26, 22, 8,
+box(col1_x, 30, 21, 8,
     'Observed EN (wait-k=5):\n\n"The river was named by..."',
     facecolor="#eef1ff", edgecolor=C_BLUE, fontsize=11, fontweight="600")
-ax.text(col1_x + 11, 37, "Observed source prefix",
+ax.text(col1_x + 10.5, 41, "Streaming state",
         ha="center", fontsize=9, color=C_GRAY, fontweight="600")
 
-box(col1_x, 14, 22, 8,
+box(col1_x, 18, 21, 8,
     'Committed ZH:\n\n"(empty)"',
     facecolor="#fafbfc", edgecolor=C_GRAY, fontsize=11, fontweight="600")
-ax.text(col1_x + 11, 25, "Committed target prefix (frozen)",
+ax.text(col1_x + 10.5, 29, "Frozen target prefix",
         ha="center", fontsize=9, color=C_GRAY, fontweight="600")
 
-# ─── "Sample K=10 futures" arrow label ───
-ax.text(28, 51, "① Qwen3-4B-Base\nsamples K=10 futures",
-        ha="center", fontsize=10, color=C_BLUE, fontweight="600",
-        bbox=dict(boxstyle="round,pad=0.4", facecolor="#eef1ff",
-                  edgecolor=C_BLUE, lw=1))
+# ═══ Column 2: Base sampler model node ═══
+base_x = 28
+box(base_x, 28.2, 14, 12,
+    "① Qwen3-4B-Base\n\nfuture sampler\nK=10 continuations",
+    facecolor="#eef1ff", edgecolor=C_BLUE, fontsize=9.6,
+    text_color=C_BLUE, fontweight="700")
+ax.text(base_x + 7, 43.2, "sample plausible source futures",
+        ha="center", fontsize=8.5, color=C_BLUE, fontweight="600")
+
+arrow(col1_x + 21, 34, base_x, 35.7, color=C_BLUE, lw=2.0, alpha=0.8)
+arrow(col1_x + 21, 22, base_x, 32.5, color=C_GRAY, lw=1.2, alpha=0.45)
 
 # ═══ Column 2: 10 future cards (stacked) ═══
-col2_x = 31
+col2_x = 47
 futures = [
     "f₁:  Lewis after his cousin Maria Wood.",
     "f₂:  Jefferson's exploration team in 1803.",
@@ -95,45 +104,60 @@ futures = [
 n_f = len(futures)
 box_h = 3.2
 gap = 0.35
-top_y = 48
+top_y = 49.2
 for i, f in enumerate(futures):
     y = top_y - i * (box_h + gap)
     is_skip = "⋮" in f
-    box(col2_x, y - box_h, 18, box_h, f,
+    box(col2_x, y - box_h, 20, box_h, f,
         facecolor="#f9fafb" if not is_skip else "#fff",
         edgecolor="#d1d5db", fontsize=8.5,
         fontweight="500" if not is_skip else "400")
-    # Draw arrow from observed source to this future card
-    arrow(col1_x + 22, 30, col2_x, y - box_h/2,
-          color=C_BLUE, lw=0.6, alpha=0.15)
+    # Fan out from the Base model to sampled future cards.
+    arrow(base_x + 14, 34.2, col2_x, y - box_h/2,
+          color=C_BLUE, lw=0.75, alpha=0.28)
 
 # Label for futures column
-ax.text(col2_x + 9, 52, "K=10 sampled English futures",
-        ha="center", fontsize=10, color=C_BLUE, fontweight="600")
+ax.text(col2_x + 10, 52.8, "K=10 sampled English futures",
+        ha="center", fontsize=9.5, color=C_BLUE, fontweight="600")
 
-# ═══ Column 3: Qwen30B query (visualized as a central thing with 10 distributions) ═══
-col3_x = 52
-ax.text((col2_x + 18 + col3_x) / 2, 51, "② Qwen3-30B\n(via vLLM)\ngives top-10\nnext-token dist\nper future",
-        ha="center", fontsize=9, color=C_PURPLE, fontweight="600",
-        bbox=dict(boxstyle="round,pad=0.4", facecolor="#f3efff",
-                  edgecolor=C_PURPLE, lw=1))
+# ═══ Column 4: Instruct scorer model node ═══
+inst_x = 72
+box(inst_x, 28.2, 14, 12,
+    "② Qwen3-30B-\nInstruct\n\nprefix-forced scorer",
+    facecolor="#f3efff", edgecolor=C_PURPLE, fontsize=9.3,
+    text_color=C_PURPLE, fontweight="700")
+ax.text(inst_x + 7, 43.2, "score next Chinese token",
+        ha="center", fontsize=8.5, color=C_PURPLE, fontweight="600")
+ax.text(inst_x + 7, 25.6, "input: each future + frozen ZH prefix",
+        ha="center", fontsize=8, color=C_GRAY, style="italic")
+
+# Show that every sampled future is scored by the Instruct model.
+for i in range(n_f):
+    y = top_y - i * (box_h + gap)
+    arrow(col2_x + 20, y - box_h/2, inst_x, 34.2,
+          color=C_PURPLE, lw=0.65, alpha=0.24)
+
+# ═══ Column 5: next-token distributions from Instruct ═══
+col3_x = 92
+ax.text(col3_x + 7, 52.8, "top-k distributions per future",
+        ha="center", fontsize=9.5, color=C_PURPLE, fontweight="600")
 
 # Draw 10 small distributions as stacked mini-tables
 for i in range(n_f):
     y = top_y - i * (box_h + gap)
-    # Draw arrow from future to distribution
-    arrow(col2_x + 18, y - box_h/2, col3_x, y - box_h/2,
-          color=C_PURPLE, lw=0.8, alpha=0.55)
+    # Fan back out from the Instruct scorer to one distribution per future.
+    arrow(inst_x + 14, 34.2, col3_x, y - box_h/2,
+          color=C_PURPLE, lw=0.75, alpha=0.32)
 
     is_skip = "⋮" in futures[i]
     if is_skip:
-        box(col3_x, y - box_h, 16, box_h, "⋮ ⋮ ⋮",
+        box(col3_x, y - box_h, 14, box_h, "⋮ ⋮ ⋮",
             facecolor="#fff", edgecolor="#e5e7eb", fontsize=10)
         continue
     # Show a small "P(next_zh token)" distribution bar
     # For the real data (sid=3, step 1), top tokens in all futures were dominated by "这条"
     # Let's show stylized: 3 tokens with probs
-    dist_w = 16
+    dist_w = 14
     ax.add_patch(FancyBboxPatch((col3_x, y - box_h), dist_w, box_h,
                  boxstyle="round,pad=0.02,rounding_size=0.4",
                  facecolor="#fff", edgecolor="#e5e7eb", lw=1, zorder=2))
@@ -149,71 +173,75 @@ for i in range(n_f):
         # token label
         ax.text(col3_x + 1, by - bar_h/2 + 0.02, tok, ha="left", va="center",
                 fontsize=7.5, color=col, fontweight="600",
-                family="serif", zorder=3)
+                fontproperties=CJK_FONT, zorder=3)
         # bar
-        ax.add_patch(Rectangle((col3_x + 4.5, by - bar_h/2), prob * 10, bar_h,
+        ax.add_patch(Rectangle((col3_x + 4.0, by - bar_h/2), prob * 8.4, bar_h,
                      facecolor=col, alpha=0.6, zorder=2))
         # prob label
-        ax.text(col3_x + 15, by - bar_h/2 + 0.02, f"{prob:.2f}", ha="right", va="center",
+        ax.text(col3_x + 13.2, by - bar_h/2 + 0.02, f"{prob:.2f}", ha="right", va="center",
                 fontsize=7, color=col, zorder=3)
         by -= bar_h + 0.2
 
-# ═══ Column 4: Intersection ═══
-col4_x = 72
+# ═══ Column 6: Intersection ═══
+col4_x = 106.5
 # Big ∩ symbol + label
 ax.text(col4_x + 6, 35, "∩", ha="center", va="center",
         fontsize=48, color=C_GREEN, fontweight="bold", zorder=5)
-ax.text(col4_x + 6, 29.5, "hard intersection\nover K=10\ntoken-ID sets",
-        ha="center", fontsize=9, color=C_GREEN, fontweight="600")
+ax.text(col4_x + 5.2, 29.0, "hard set\nintersection\nK=10",
+        ha="center", fontsize=8.7, color=C_GREEN, fontweight="600")
 
 # 10 arrows converging to ∩ point
 for i in range(n_f):
     y = top_y - i * (box_h + gap)
-    arrow(col3_x + 16, y - box_h/2, col4_x + 3, 35,
+    arrow(col3_x + 14, y - box_h/2, col4_x + 3, 35,
           color=C_GREEN, lw=0.8, alpha=0.4)
 
 # Little ③ label
-ax.text(col4_x + 6, 46, "③ Intersect",
+ax.text(col4_x + 6, 47.5, "③ Intersect",
         ha="center", fontsize=10, color=C_GREEN, fontweight="600",
         bbox=dict(boxstyle="round,pad=0.4", facecolor=C_GREEN_LIGHT,
                   edgecolor=C_GREEN, lw=1))
 
-# ═══ Column 5: Winner commit ═══
-col5_x = 84
+# ═══ Column 7: Winner commit ═══
+col5_x = 117.2
 # Arrow from ∩ to commit
 arrow(col4_x + 10, 35, col5_x, 35, color=C_GREEN, lw=3, alpha=0.9, style="->")
 
-# Winner box
-box(col5_x, 30, 14, 10,
-    "「这条」\n\nALL 10 futures\nagree!\navg prob 0.863\n\nCOMMIT ✓",
-    facecolor=C_GREEN_LIGHT, edgecolor=C_GREEN, fontsize=10,
-    fontweight="700", rounded=True)
+# Winner box. Draw Chinese and English separately so each uses a font
+# that supports its glyphs cleanly.
+ax.add_patch(FancyBboxPatch((col5_x, 30), 7.0, 10,
+             boxstyle="round,pad=0.02,rounding_size=0.5",
+             facecolor=C_GREEN_LIGHT, edgecolor=C_GREEN, linewidth=1.5, zorder=2))
+ax.text(col5_x + 3.5, 37.4, "「这条」", ha="center", va="center",
+        fontsize=10.5, color="#1a1a2e", fontweight="700",
+        fontproperties=CJK_FONT, zorder=3)
+ax.text(col5_x + 3.5, 33.7, "ALL 10\nagree\np=0.863\n\nCOMMIT",
+        ha="center", va="center", fontsize=8.4, color="#1a1a2e",
+        fontweight="700", zorder=3)
 # Extra border glow
-ax.add_patch(FancyBboxPatch((col5_x - 0.4, 29.6), 14.8, 10.8,
+ax.add_patch(FancyBboxPatch((col5_x - 0.35, 29.6), 7.7, 10.8,
              boxstyle="round,pad=0.02,rounding_size=0.5",
              facecolor="none", edgecolor=C_GREEN, lw=0.8,
              alpha=0.4, zorder=1))
 
-ax.text(col5_x + 7, 42, "④ Safe commit",
+ax.text(col5_x + 3.5, 43.5, "④ Commit",
         ha="center", fontsize=10, color=C_GREEN, fontweight="600",
         bbox=dict(boxstyle="round,pad=0.4", facecolor=C_GREEN_LIGHT,
                   edgecolor=C_GREEN, lw=1))
 
 # ═══ Bottom: Why this solves early commitment ═══
 y_bottom = 5
-ax.add_patch(FancyBboxPatch((2, y_bottom - 2), 96, 8,
+ax.add_patch(FancyBboxPatch((2, y_bottom - 2), 121, 8,
              boxstyle="round,pad=0.3,rounding_size=0.8",
              facecolor="#fff7ed", edgecolor=C_AMBER, lw=1.5, zorder=1))
 
 ax.text(6, y_bottom + 4.5, "Why this solves early commitment:",
         ha="left", fontsize=12, color="#92400e", fontweight="700")
 ax.text(6, y_bottom + 2.5,
-        "We only commit a Chinese token when it appears in the top-k next-token "
-        "distribution of EVERY sampled English future.",
+        "The Base model explores plausible source continuations; the Instruct model scores the next Chinese token under each future.",
         ha="left", fontsize=10, color="#92400e")
 ax.text(6, y_bottom + 0.8,
-        "→  a committed token is guaranteed safe against ALL plausible source continuations "
-        "→  no more feared 'later source reveals we were wrong'.",
+        "→  commit only when the same token survives ALL futures, so the decision is robust to delayed source information.",
         ha="left", fontsize=10, color="#92400e", style="italic")
 
 plt.tight_layout()

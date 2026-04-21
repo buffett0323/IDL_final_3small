@@ -59,22 +59,14 @@ Test-Time Reasoning)}, a family of three progressive, training-free \emph{commit
 on the translation side that let the translator \emph{think} by sampling plausible future
 source continuations and acting only on what those futures agree on. We evaluate on both pure
 text (WMT19) and a \emph{cascaded} speech pipeline (CoVoST-2 via offline Whisper ASR + streaming
-text agent); an end-to-end streaming-ASR stack is left as future work. The three stages are:
-(1) \textbf{Distribution Divergence (DD)}, a Jensen--Shannon gate that decides \emph{when to wait};
-(2) \textbf{Future Literal LCP (SemLCP)}, which decides \emph{what character prefix is safe to write};
-and (3) \textbf{Token Consensus Decoding (TC)}, which moves the consensus from surface strings to
-\emph{token-ID intersections} of the translator's own distribution. On cascaded
-Whisper$\rightarrow$Qwen3-30B CoVoST-2 EN$\rightarrow$ZH (1997 utterances), TC reaches
-\textbf{35.85 BLEU at AL 5.76}, a \textbf{+3.67 BLEU} gain over direct wait-$k$=5 with only
-\textbf{+0.12} source-word extra lag. On the WMT19 EN$\rightarrow$ZH text benchmark the full
-configuration (TC with a nucleus top-$p$=0.95 consensus pool) reaches
-\textbf{35.12 BLEU at AL 9.64}, yielding \textbf{+6.97 BLEU (28.15$\rightarrow$35.12)} and
-\textbf{+0.078 COMET} over the wait-$k$=5 baseline; the fixed top-$k$=10 variant already gives
-$+6.01$ BLEU, and the same token-level signal transfers to a 600M-parameter NLLB baseline.
-Ablations over the number of sampled futures $K\!\in\!\{4,6,10,15\}$, the per-future top-$k$
-pool size, and the consensus pool mode (top-$k$, nucleus top-$p$, min-$p$) confirm the gain is
-robust and identify nucleus top-$p{=}0.95$ as the best pool rule ($+0.96$ BLEU on WMT19 full
-over fixed top-$k$).
+text agent); a fully streaming ASR front-end is left as future work. STTR progresses from a
+Jensen--Shannon distribution-divergence gate, to character-level future LCP, to
+\textbf{Token Consensus Decoding}, which commits only target tokens that appear in the
+translator's next-token distributions under all sampled futures. Across text and cascaded speech
+settings, the token-level consensus variant consistently improves translation quality over
+direct wait-$k$ baselines while adding only modest latency. Ablations over the number of sampled
+futures, the per-future candidate pool size, and the pool-selection rule show that the gains are
+not tied to a single hyperparameter choice.
 \end{abstract}
 
 %-----------------------------------------------------------------------
@@ -543,9 +535,9 @@ Table~\ref{tab:wmt}).
 
 \begin{table}[t]
 \caption{TC pool-mode ablation on WMT19 \texttt{rand100} (100 sentences, Qwen3-30B, wait-$k$=5,
-$K$=10). ``Pool size'' is the median number of candidates per future after filtering.
-Bold marks the best rule in each family. The nucleus top-$p{=}0.95$ setting is the one we run
-on the full test set in Table~\ref{tab:wmt}.}
+$K$=10). All rows share the same futures, translator, and policy; only the rule that selects
+each future's candidate pool changes. Bold marks the best rule in each family. The nucleus
+top-$p{=}0.95$ setting is the one we run on the full test set in Table~\ref{tab:wmt}.}
 \label{tab:poolmode}
 \centering
 \small
@@ -676,8 +668,7 @@ interactive TC demo \texttt{demo\_html/sttr\_presentation.html}, with audio for 
 This work was run on CMU Babel L40S GPUs.
 
 %-----------------------------------------------------------------------
-\scriptsize
-\setlength{\bibsep}{0pt}
+\small
 \bibliographystyle{plainnat}
 \begin{thebibliography}{99}
 
