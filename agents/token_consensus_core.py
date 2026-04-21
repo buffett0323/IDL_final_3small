@@ -253,16 +253,61 @@ def topk_token_ids(dist: Dict[int, float], k: int = TOP_K) -> List[int]:
     return [tid for tid, _ in sorted(dist.items(), key=lambda kv: kv[1], reverse=True)[:k]]
 
 
+def topp_token_ids(dist: Dict[int, float], p: float = 0.9) -> List[int]:
+    """Nucleus (top-p) candidate pool. Keep the smallest set whose cumulative
+    probability reaches p. If the distribution has already been renormalised
+    over the returned top-k logprobs, we renormalise again defensively."""
+    if not dist:
+        return []
+    sorted_items = sorted(dist.items(), key=lambda kv: kv[1], reverse=True)
+    total = sum(pr for _, pr in sorted_items) or 1.0
+    kept: List[int] = []
+    acc = 0.0
+    for tid, pr in sorted_items:
+        kept.append(tid)
+        acc += pr / total
+        if acc >= p:
+            break
+    return kept
+
+
+def minp_token_ids(dist: Dict[int, float], p: float = 0.1) -> List[int]:
+    """min-p candidate pool. Keep tokens whose prob is at least p * max_prob."""
+    if not dist:
+        return []
+    max_p = max(dist.values())
+    thresh = p * max_p
+    return [tid for tid, pr in sorted(dist.items(), key=lambda kv: kv[1], reverse=True)
+            if pr >= thresh]
+
+
+def _pool_ids(dist: Dict[int, float], pool_mode: str, pool_p: float, top_k: int) -> List[int]:
+    if pool_mode == "topp":
+        return topp_token_ids(dist, pool_p)
+    if pool_mode == "minp":
+        return minp_token_ids(dist, pool_p)
+    return topk_token_ids(dist, top_k)  # default "topk"
+
+
 # ── Consensus ─────────────────────────────────────────────────────────────────
 
 def choose_consensus_token(
     distributions: List[Dict[int, float]],
+    pool_mode: str = "topk",
+    pool_p: float = 0.9,
+    top_k: int = TOP_K,
 ) -> Tuple[Optional[int], Dict[str, Any]]:
-    """Hard intersection consensus over filtered distributions."""
+    """Hard intersection consensus over filtered distributions.
+
+    Args:
+        pool_mode: "topk" (default), "topp" (nucleus), or "minp".
+        pool_p:    p parameter for topp/minp.
+        top_k:     k for the legacy topk mode.
+    """
     if not distributions:
         return None, {"reason": "no_distributions"}
 
-    candidate_lists = [topk_token_ids(dist, TOP_K) for dist in distributions]
+    candidate_lists = [_pool_ids(dist, pool_mode, pool_p, top_k) for dist in distributions]
 
     intersection = set(candidate_lists[0])
     for clist in candidate_lists[1:]:
@@ -622,6 +667,8 @@ class FutureTokenConsensusEngine:
         future_temperature: float = 0.9,
         top_logprobs: int = TOP_K,
         max_consensus_steps: int = 6,
+        pool_mode: str = "topk",
+        pool_p: float = 0.9,
     ):
         self.future_lm = future_lm
         self.vllm = vllm
@@ -630,6 +677,8 @@ class FutureTokenConsensusEngine:
         self.future_temperature = future_temperature
         self.top_logprobs = top_logprobs
         self.max_consensus_steps = max_consensus_steps
+        self.pool_mode = pool_mode
+        self.pool_p = float(pool_p)
         self.tokenizer = AutoTokenizer.from_pretrained(
             tokenizer_path, trust_remote_code=True,
         )
@@ -724,8 +773,13 @@ class FutureTokenConsensusEngine:
                 trace["stop_reason"] = "empty_distribution"
                 break
 
-            # Consensus
-            token_id, meta = choose_consensus_token(distributions)
+            # Consensus (candidate pool: top-k / top-p / min-p)
+            token_id, meta = choose_consensus_token(
+                distributions,
+                pool_mode=self.pool_mode,
+                pool_p=self.pool_p,
+                top_k=self.top_logprobs,
+            )
             step_rec["consensus_meta"] = meta
 
             if token_id is None:

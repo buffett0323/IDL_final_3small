@@ -155,6 +155,8 @@ class FutureTokenConsensusAgent(TextToTextAgent):
             future_temperature=args.future_temperature,
             top_logprobs=args.top_logprobs,
             max_consensus_steps=args.max_consensus_steps,
+            pool_mode=getattr(args, "pool_mode", "topk"),
+            pool_p=float(getattr(args, "pool_p", 0.9)),
         )
 
         self._committed: str = ""
@@ -229,6 +231,18 @@ class FutureTokenConsensusAgent(TextToTextAgent):
             "--verbose",
             action="store_true",
             help="Print each consensus step to stdout.",
+        )
+        parser.add_argument(
+            "--pool-mode", choices=["topk", "topp", "minp"], default="topk",
+            help="Candidate-pool selector applied to each future's next-token "
+                 "distribution BEFORE intersection. 'topk' (default) uses the "
+                 "fixed top-K set; 'topp' uses nucleus sampling with --pool-p "
+                 "as p; 'minp' keeps tokens with prob >= pool_p * max_prob.",
+        )
+        parser.add_argument(
+            "--pool-p", type=float, default=0.9,
+            help="p parameter for --pool-mode=topp (cumulative prob) or minp "
+                 "(fraction of max-prob). Ignored for topk.",
         )
 
     def reset(self):

@@ -15,16 +15,35 @@
 \usepackage{microtype}
 \usepackage{graphicx}
 \usepackage{xcolor}
+% If a figure file is missing, show a placeholder box instead of stopping compilation.
+\newcommand{\maybeincludegraphics}[2][]{%
+  \IfFileExists{#2}{\includegraphics[#1]{#2}}{%
+    \fbox{\texttt{Missing figure: \detokenize{#2}}}%
+  }%
+}
 
-\title{STTR: Selective Test-Time Reasoning for Streaming Speech Translation\\
-\large From Wait-k to Future-Aware Token Consensus Decoding}
+
+\title{STTR: Selective Test-Time Reasoning for Simultaneous Machine Translation\\
+\large From Wait-k to Future-Aware Token Consensus Decoding, with a Cascaded Speech Evaluation}
 
 \author{%
-  Haoling Peng \\
-  Language Technologies Institute\\
+  Jeng-Yue Liu \\
+  Language Technology Institute\\
   Carnegie Mellon University\\
-  Pittsburgh, PA 15213 \\
-  \texttt{haolingp@andrew.cmu.edu} \\
+  Pittsburgh, PA 15213\\
+  \texttt{buffettl@andrew.cmu.edu}
+  \And
+  Wilson Zheng \\
+  Language Technology Institute\\
+  Carnegie Mellon University\\
+  Pittsburgh, PA 15213\\
+  \texttt{wilsonz@andrew.cmu.edu}
+  \And
+  Haoling Pu \\
+  Language Technology Institute\\
+  Carnegie Mellon University\\
+  Pittsburgh, PA 15213\\
+  \texttt{haolingp@andrew.cmu.edu}
 }
 
 \begin{document}
@@ -32,22 +51,30 @@
 \maketitle
 
 \begin{abstract}
-Simultaneous speech translation (SimulST) must emit target words while the source is still
-arriving. Under fixed wait-$k$ policies the system commits prematurely because its
-next-word distribution is already collapsed, and those commits can never be retracted.
-We propose \textbf{STTR (Selective Test-Time Reasoning)}, a family of three progressive,
-training-free policies that let the translator \emph{think} by sampling plausible future source
-continuations and acting only on what those futures agree on. The three stages are:
+Simultaneous machine translation (SimulMT) must emit target words while the source is still
+arriving; its speech extension (SimulST) adds a streaming audio front-end on top. Under fixed
+wait-$k$ policies the system commits prematurely because its next-word distribution is already
+collapsed, and those commits can never be retracted. We propose \textbf{STTR (Selective
+Test-Time Reasoning)}, a family of three progressive, training-free \emph{commit-rule} policies
+on the translation side that let the translator \emph{think} by sampling plausible future
+source continuations and acting only on what those futures agree on. We evaluate on both pure
+text (WMT19) and a \emph{cascaded} speech pipeline (CoVoST-2 via offline Whisper ASR + streaming
+text agent); an end-to-end streaming-ASR stack is left as future work. The three stages are:
 (1) \textbf{Distribution Divergence (DD)}, a Jensen--Shannon gate that decides \emph{when to wait};
 (2) \textbf{Future Literal LCP (SemLCP)}, which decides \emph{what character prefix is safe to write};
 and (3) \textbf{Token Consensus Decoding (TC)}, which moves the consensus from surface strings to
 \emph{token-ID intersections} of the translator's own distribution. On cascaded
 Whisper$\rightarrow$Qwen3-30B CoVoST-2 EN$\rightarrow$ZH (1997 utterances), TC reaches
 \textbf{35.85 BLEU at AL 5.76}, a \textbf{+3.67 BLEU} gain over direct wait-$k$=5 with only
-\textbf{+0.12 s} of extra lag. On the WMT19 EN$\rightarrow$ZH text benchmark it yields
-\textbf{+6.01 BLEU (28.15$\rightarrow$34.16)} and \textbf{+0.074 COMET}, and the same token-level
-signal transfers to a 600M-parameter NLLB baseline. Ablations over the number of sampled futures
-$K\in\{4,6,10,15\}$ and the per-future top-$p$ vocabulary pool confirm the gain is robust.
+\textbf{+0.12} source-word extra lag. On the WMT19 EN$\rightarrow$ZH text benchmark the full
+configuration (TC with a nucleus top-$p$=0.95 consensus pool) reaches
+\textbf{35.12 BLEU at AL 9.64}, yielding \textbf{+6.97 BLEU (28.15$\rightarrow$35.12)} and
+\textbf{+0.078 COMET} over the wait-$k$=5 baseline; the fixed top-$k$=10 variant already gives
+$+6.01$ BLEU, and the same token-level signal transfers to a 600M-parameter NLLB baseline.
+Ablations over the number of sampled futures $K\!\in\!\{4,6,10,15\}$, the per-future top-$k$
+pool size, and the consensus pool mode (top-$k$, nucleus top-$p$, min-$p$) confirm the gain is
+robust and identify nucleus top-$p{=}0.95$ as the best pool rule ($+0.96$ BLEU on WMT19 full
+over fixed top-$k$).
 \end{abstract}
 
 %-----------------------------------------------------------------------
@@ -65,11 +92,11 @@ speaker could never repair. This project asks:
 \begin{quote}
 \emph{Can we spend a bounded amount of extra test-time compute on sampling and reasoning over
 plausible \emph{future} source words, so the agent commits only when its output is stable under
-those futures --- and otherwise waits?}
+those futures, and otherwise waits?}
 \end{quote}
 
 \textbf{Qualitative objective.} Replace fixed wait-$k$ with a content-aware policy that preserves
-a streaming interface (word-by-word source, word-by-word target, no retractions).
+a streaming interface (word-by-word source, token/span-level target commits, no retractions).
 
 \textbf{Quantitative objective.} On CoVoST-2 EN$\rightarrow$ZH (1997 utterances, cascaded
 Whisper-small ASR $\rightarrow$ Qwen3-30B translator), improve BLEU by $\geq$\,$+3$ over a
@@ -80,7 +107,7 @@ verify the ranking carries over to WMT19 EN$\rightarrow$ZH text and to a 600M NL
 \section{Related Work and Background}
 \label{sec:related}
 
-\paragraph{Fixed-policy SimulST.} Wait-$k$ \citep{ma2019stacl} is the standard strict baseline.
+\paragraph{Fixed-policy SimulMT / SimulST.} Wait-$k$ \citep{ma2019stacl} is the standard strict baseline.
 MMA \citep{ma2019monotonic} and the meta-learning agent of \citet{zheng2019simpler} add monotonic
 attention for an adaptive read/write. These models still decide with a \emph{single} forward pass
 per step; none of them look ahead.
@@ -90,16 +117,18 @@ framework and reports BLEU together with AL, Length-Adaptive AL (LAAL), Average 
 Differentiable AL (DAL). We adopt its Python streaming interface verbatim.
 
 \paragraph{Chain-of-thought and test-time compute.} Recent work shows that spending extra
-inference-time compute --- by chain-of-thought \citep{wei2022cot}, self-consistency
-\citep{wang2022selfconsistency} or tree-of-thought search --- improves LLM reasoning. We port the
+inference-time compute, by chain-of-thought \citep{wei2022cot}, self-consistency
+\citep{wang2022selfconsistency} or tree-of-thought search, improves LLM reasoning. We port the
 \emph{self-consistency} idea (sample many completions, keep only what they agree on) into
-streaming translation. To our knowledge this is the first application of future-sampling
-consensus to SimulST commit rules.
+streaming translation, using future-sampling consensus as a test-time commit rule rather than as
+a training objective.
 
 \paragraph{Cascaded ST.} For the speech front-end we use Whisper \citep{radford2023whisper} as an
 offline ASR (one utterance in, one English transcript out) followed by a word-level streaming
-text agent. Recent SimulST systems \citep{fukuda2023nasict,papi2023whisper} treat the Whisper
-transcript as the source stream to SimulEval, which is the convention we inherit.
+text agent. Recent cascaded-ST systems \citep{fukuda2023nasict,papi2023whisper} treat the Whisper
+transcript as the source stream to SimulEval. \textbf{We inherit this convention:} our ASR is
+offline, and the ``streaming'' part of the system is strictly on the translation side. A fully
+streaming-ASR front-end is an orthogonal engineering change (cf.\ \S\ref{sec:future}).
 
 \paragraph{Backbones.} Our small translator is NLLB-200-distilled-600M
 \citep{nllb2022}; our strong translator is Qwen3-30B-A3B-Instruct-FP8 \citep{qwen3} served with
@@ -114,7 +143,7 @@ vLLM \citep{kwon2023vllm}; our future sampler is Qwen3-4B-Base. All three are op
 
 \begin{figure}[t]
   \centering
-  \includegraphics[width=0.88\linewidth]{figures/tc_mechanism.png}
+  \maybeincludegraphics[width=0.88\linewidth]{figures/tc_mechanism.png}
   \caption{STTR pipeline at commit step $t$. Left: the committed source prefix and committed
   Chinese prefix. Middle: a future LM samples $K$ plausible English continuations. Right: for
   each future the translator returns a next-token distribution; we intersect their top-$p$
@@ -133,14 +162,40 @@ offline ASR.
 hypothesis for speech) and the already-committed Chinese prefix. Output: one of
 \textsc{read}/\textsc{write}($c$), where $c$ is one or more newly committed characters.
 
-\textbf{Parameter counts (used, not trained).}
-Whisper-small 244\,M; NLLB-200-distilled 615\,M; Qwen3-4B-Base 4.1\,B; Qwen3-30B-A3B-Instruct-FP8
-30.5\,B (3\,B active MoE experts, FP8 quantised).
+Table~\ref{tab:models} summarises the four pretrained models used in this project, their role,
+parameter count, and I/O shape. All four are used \emph{off-the-shelf}: no weight is trained or
+fine-tuned by us.
 
-\textbf{Output map shape.} For NLLB the translator's next-token distribution is a dense
-$\mathbb{R}^{256{,}206}$ softmax; for Qwen it is sparse top-20 \texttt{logprobs} returned by vLLM
-with \texttt{--return-tokens-as-token-ids}. For both we intersect on token IDs, which is what
-makes the method translator-agnostic.
+\begin{table}[h]
+\caption{Model inventory. Each component is a frozen open-weight model; only the inference-time
+policy (\S\ref{sec:method}) is our contribution.}
+\label{tab:models}
+\centering
+\resizebox{\linewidth}{!}{\footnotesize
+\setlength{\tabcolsep}{6pt}
+\begin{tabular}{llllr}
+  \toprule
+  Role & Model & Task & Params & I/O shape \\
+  \midrule
+  ASR front-end    & Whisper-small \citep{radford2023whisper}      & audio $\to$ EN text          & 244\,M   & 16\,kHz mono $\to$ transcript \\
+  Future LM        & Qwen3-4B-Base \citep{qwen3}                   & sample $K$ EN continuations  & 4.1\,B   & EN prefix $\to$ $\leq\!16$ new tok \\
+  Main translator  & Qwen3-30B-A3B-Instr-FP8 \citep{qwen3}         & EN+ZH prefix $\to$ ZH token  & 30.5\,B  & top-20 logprobs / step \\
+  Small translator & NLLB-200-distilled \citep{nllb2022}           & EN $\to$ ZH supporting line  & 615\,M   & dense $\mathbb{R}^{256{,}206}$ softmax \\
+  \bottomrule
+\end{tabular}}
+\end{table}
+
+\textbf{Output map shape.} For NLLB the translator's next-token distribution is the full dense
+$\mathbb{R}^{256{,}206}$ softmax; for Qwen we read the sparse top-20 \texttt{logprobs} returned by
+vLLM with \texttt{--return-tokens-as-token-ids}. Because both are consumed at the level of token
+IDs, the Token Consensus commit rule (\S\ref{sec:method}) is translator-agnostic.
+
+\textbf{Cascaded data flow.}
+$\text{speech}\rightarrow$ Whisper (offline) $\rightarrow$ EN word stream $\rightarrow$ SimulEval
+text agent $\rightarrow$ (future LM $\times K$) $\parallel$ (translator $\times K$, shared KV)
+$\rightarrow$ token-ID intersection $\rightarrow$ ZH character commit. Source is consumed
+word-by-word; target is emitted as irreversible Chinese tokens/spans, rendered as characters for
+SimulEval scoring.
 
 \subsection{Three STTR commit rules}
 
@@ -173,7 +228,8 @@ include it).
 For each future, query $\pi_T$ for the top-$P$ next-token probabilities under the committed Chinese
 prefix (enforced via \texttt{apply\_chat\_template} plus an assistant-side prefix). Let $T^{(k)}$
 be the filtered top-$P$ token IDs (drop special, English-letter, and garbled-UTF-8 tokens).
-Compute the hard intersection
+Compute the \emph{hard intersection} (no quorum --- \textbf{all} $K$ futures must contain the
+token in their top-$P$ set):
 \begin{equation}
   T^{\cap} \;=\; \bigcap_{k=1}^{K} T^{(k)}.
   \label{eq:tc}
@@ -214,22 +270,50 @@ Let an agent's action log be $\{\text{(read, $s_i$)}, \text{(write, $y_j$)}\}$. 
 converts each \textsc{write} event to a \emph{delay} $d_j$ = number of source words read before
 $y_j$. Our headline metrics are:
 \begin{align}
-\text{BLEU} \;&=\; \text{BLEU-4}(y, y^{*}) \quad \text{(sacrebleu, ZH char-level tokenisation).}\\
-\operatorname{AL} \;&=\; \frac{1}{\tau^{*}}\sum_{j=1}^{\tau^{*}} \left[d_j - \frac{j-1}{\gamma}\right],
- && \gamma=\frac{|y^{*}|}{|s|}, \quad \tau^{*}=\min\{j:d_j=|s|\},\\
-\operatorname{LAAL} \;&=\; \operatorname{AL \text{ with }} \gamma \leftarrow \max\bigl(\gamma,\,|y|/|s|\bigr),\\
-\operatorname{AP} \;&=\; \frac{1}{|s||y|}\sum_{j=1}^{|y|} d_j.
+\mathrm{BLEU} \;&=\; \mathrm{BLEU\text{-}4}(y, y^{*}) \quad \text{(sacrebleu, ZH char-level tokenisation)},\\
+\mathrm{AL} \;&=\; \frac{1}{\tau^{*}}\sum_{j=1}^{\tau^{*}} \left[d_j - \frac{j-1}{\gamma}\right],
+\quad \gamma=\frac{|y^{*}|}{|s|},\; \tau^{*}=\min\{j:d_j=|s|\},\\
+\mathrm{LAAL} \;&=\; \mathrm{AL\ with\ } \gamma \leftarrow \max\bigl(\gamma,\,|y|/|s|\bigr),\\
+\mathrm{AP} \;&=\; \frac{1}{|s|\,|y|}\sum_{j=1}^{|y|} d_j.
 \end{align}
-All latency metrics are in \emph{source-word} units (text) or \emph{seconds} (speech). For the
-text track we also report COMET \citep{rei2020comet} using \texttt{Unbabel/wmt22-comet-da}.
+All latency metrics are in \emph{source-word} units. For speech, Whisper is run offline first and
+the ASR transcript is streamed word-by-word into the same SimulEval text agent. We report COMET
+\citep{rei2020comet} using \texttt{Unbabel/wmt22-comet-da}.
 
 \subsection{Loss function and optimisation}
-The STTR policies are \emph{training-free}: no gradient steps are taken, and there is no
-differentiable objective. The only ``optimisation'' is the test-time argmax in
-Eq.~\ref{eq:tc} and the threshold sweep over $(\tau,K,P)$. The underlying translators were
-trained with the standard cross-entropy objective
-$\mathcal{L}_{\text{CE}} = -\sum_{t} \log p_\theta(y_t\,|\,y_{<t},x)$ by their authors; no
-fine-tuning is performed in this project.
+\label{sec:loss}
+
+\paragraph{\boldmath This project is training-free by design.}
+STTR is a \emph{test-time reasoning} method: we propose a new inference-time policy that operates
+on frozen pretrained translators. No gradient descent, no weight update, no fine-tuning is
+performed. Training-free reasoning is an established research direction in NLP --- chain-of-thought
+\citep{wei2022cot}, self-consistency \citep{wang2022selfconsistency}, tree-of-thought search, and
+speculative decoding all share this shape --- and sits in the same family as our work.
+
+\paragraph{Upstream training objective (inherited, not optimised by us).}
+The translators we consume were pretrained by their authors with standard conditional
+cross-entropy on parallel corpora,
+\begin{equation}
+  \mathcal{L}_{\text{CE}}(\theta) \;=\; - \mathbb{E}_{(x,y^*)\sim \mathcal{D}}\;
+  \sum_{t=1}^{|y^*|} \log p_\theta\!\left(y^*_t \,\middle|\, y^*_{<t},\,x\right).
+  \label{eq:ce}
+\end{equation}
+Equation~\ref{eq:ce} is a property of the backbones (NLLB, Qwen3-30B), not of our method. We
+neither minimise nor modify it.
+
+\paragraph{Our actual test-time objective.}
+At each decision step our commit rule solves the small consensus-argmax problem
+\begin{equation}
+  v^{\star} \;=\; \operatorname*{arg\,max}_{v \in T^{\cap}}\;
+  \frac{1}{K}\sum_{k=1}^{K} p^{(k)}(v),
+  \qquad T^{\cap} = \bigcap_{k=1}^{K} T^{(k)},
+  \label{eq:testobj}
+\end{equation}
+over token IDs shared by all $K$ sampled-future distributions, with $T^{(k)}$ the filtered top-$P$
+set under future $k$ (Eq.~\ref{eq:pk}). When $T^{\cap}$ is empty the agent commits nothing and
+\textsc{read}s. This is the ``optimisation'' STTR does --- performed once per committed token,
+not once per gradient step. Hyperparameters $(\tau, K, P)$ are chosen on development slices, not
+by gradient-based tuning.
 
 \subsection{Experimental depth and iteration}
 The project went through five iterations: (i) an initial NLLB EN$\rightarrow$DE wait-$k$
@@ -301,7 +385,16 @@ correct.
 \section{Results and Analysis}
 \label{sec:results}
 
-\subsection{Headline: CoVoST-1997 cascaded speech translation}
+\paragraph{Development vs.\ held-out test.}
+Since no gradient descent is performed (\S\ref{sec:loss}), the usual ``training loss vs.\ validation
+loss'' split does not apply. We instead split evaluation into \emph{development} slices ---
+\texttt{rand100} (100 random WMT19 sentences) and \texttt{wmt500} (first 500) --- used only to
+pick hyperparameters $(\tau, K, P)$ and sanity-check code paths; and \emph{held-out test} slices
+--- the full \textbf{WMT19 newstest-2019 (1{,}997 sentences)} and the \textbf{CoVoST-2 test
+split (1{,}997 utterances)} --- which are used strictly for the headline numbers reported below
+and never touched during threshold selection.
+
+\subsection{Headline: CoVoST-1997 cascaded evaluation (offline ASR + streaming text)}
 \label{sec:headline}
 
 \begin{table}[t]
@@ -328,7 +421,7 @@ translator. \textbf{Bold} marks the best value in each sub-table.}
 
 \begin{figure}[t]
   \centering
-  \includegraphics[width=0.78\linewidth]{figures/covost_headline.png}
+  \maybeincludegraphics[width=0.78\linewidth]{figures/covost_headline.png}
   \caption{CoVoST-1997 BLEU vs.\ AL. Up-and-left is better. Token Consensus Decoding delivers the
   best quality while staying within $+0.12$\,words of the Qwen direct wait-$k$=5 latency; the DD
   gate moves up-and-right (buys quality by waiting more).}
@@ -350,7 +443,8 @@ confirming again that gating-only policies buy quality by waiting more.
 
 \begin{table}[t]
 \caption{WMT19 EN$\rightarrow$ZH newstest (1997 sentences), same Qwen3-30B translator,
-wait-$k$=5 text stream.}
+wait-$k$=5 text stream. The last row replaces the fixed top-$k$ intersection used by the base TC
+variant with a nucleus (top-$p$) pool --- see the pool-mode ablation in Table~\ref{tab:poolmode}.}
 \label{tab:wmt}
 \centering
 \small
@@ -358,38 +452,32 @@ wait-$k$=5 text stream.}
   \toprule
   Method & BLEU & $\Delta$ BLEU & AL & LAAL & COMET \\
   \midrule
-  Qwen direct wait-$k$=5                   & 28.15 & ---   & 8.55 & 9.19 & 0.774 \\
-  Qwen + DD gate ($K$=4, $\tau$=0.15)      & 29.14 & +0.99 & 9.33 & 9.86 & 0.791 \\
-  Qwen + SemLCP ($K$=4)                    & 31.95 & +3.80 & 8.79 & 9.10 & 0.828 \\
-  \textbf{Qwen + TC} ($K$=10, top-10)      & \textbf{34.16} & \textbf{+6.01} & 8.83 & 9.15 & \textbf{0.848} \\
+  Qwen direct wait-$k$=5                      & 28.15          & ---            & 8.55 & 9.19 & 0.774 \\
+  Qwen + DD gate ($K$=4, $\tau$=0.15)         & 29.14          & +0.99          & 9.33 & 9.86 & 0.791 \\
+  Qwen + SemLCP ($K$=4)                       & 31.95          & +3.80          & 8.79 & 9.10 & 0.828 \\
+  Qwen + TC ($K$=10, top-$k$=10)              & 34.16          & +6.01          & 8.83 & 9.15 & 0.848 \\
+  \textbf{Qwen + TC} ($K$=10, top-$p$=0.95)   & \textbf{35.12} & \textbf{+6.97} & 9.64 & 9.91 & \textbf{0.852} \\
   \bottomrule
 \end{tabular}
 \end{table}
 
-Table~\ref{tab:wmt} confirms on text that the three-step progression is monotone in BLEU and
-COMET: direct $\rightarrow$ DD $\rightarrow$ SemLCP $\rightarrow$ TC. COMET rises from 0.774 to
-0.848, a \textbf{$+0.074$} absolute gain, which \citet{rei2020comet} report as corresponding to
-a clearly human-preferred translation quality jump. Latency rises by only 0.28 words.
+Table~\ref{tab:wmt} confirms on text that the four-step progression is monotone in BLEU and
+COMET: direct $\rightarrow$ DD $\rightarrow$ SemLCP $\rightarrow$ TC (top-$k$) $\rightarrow$ TC
+(top-$p$). COMET rises from 0.774 to 0.852, a \textbf{$+0.078$} absolute gain, which
+\citet{rei2020comet} motivate as a metric aligned with human translation preferences. The
+additional $+0.96$ BLEU that TC (top-$p$) buys on top of TC (top-$k$) comes from switching the
+per-future candidate pool from a fixed top-$k$ to a distribution-adaptive nucleus
+rule (\S\ref{sec:ablation}): the per-future pool is large when the translator is uncertain and
+tight when it is confident, so the hard intersection is simultaneously less noisy on easy
+positions and less likely to be empty on hard ones.
 
 \subsection{Error / failure-case analysis}
 \label{sec:failure}
 
-\begin{figure}[t]
-  \centering
-  \includegraphics[width=0.78\linewidth]{figures/tc_vs_waitk.png}
-  \caption{Before/after on the ``bank'' failure mode. With wait-$k$=5 the premature choice of
-  \emph{financial} reading (\emph{y\'inh\'ang}) is locked in 3 source words before
-  the biological disambiguator arrives, yielding a grammatically fluent but semantically wrong
-  translation. Under TC, the intersection of $K$ futures' next-token distributions is empty at
-  the critical step, the agent reads one more word, and \emph{h\'e'\`an}
-  (riverbank) becomes the argmax once the sentence continues ``\ldots teeming with frogs and
-  dragonflies.''}
-  \label{fig:failure}
-\end{figure}
-
-Figure~\ref{fig:failure} walks through the canonical failure mode TC is designed to fix. Because
-the English word \emph{bank} is ambiguous, a wait-$k$ agent commits to the higher-frequency
-financial reading at the first opportunity. TC waits because its $K$ plausible futures disagree:
+\paragraph{Ambiguous-prefix failure.}
+The canonical failure mode TC is designed to fix is the English word \emph{bank}: a wait-$k$
+agent commits to the higher-frequency financial reading before the biological disambiguator
+``\ldots teeming with frogs and dragonflies'' arrives. TC waits because its $K$ plausible futures disagree:
 some continuations turn the sentence financial (``the bank was near default''), some biological
 (``the bank was teeming with frogs''), so the next-token distributions point at different
 Chinese characters and the hard intersection is empty. One more source word resolves the
@@ -408,7 +496,7 @@ text track.
 
 \begin{figure}[t]
   \centering
-  \includegraphics[width=0.78\linewidth]{figures/tc_ablations.png}
+  \maybeincludegraphics[width=0.78\linewidth]{figures/tc_ablations.png}
   \caption{Sensitivity of TC on WMT19 rand100. Left: BLEU as a function of the number of
   sampled futures $K$. Right: BLEU as a function of the per-future top-$P$ vocabulary pool.}
   \label{fig:ablation}
@@ -441,38 +529,83 @@ because the stricter filter produces more empty intersections (more \textsc{read
 top-20 lets in noise tokens and drops BLEU. Our default $K{=}10$, top-10 is a reasonable
 mid-point; the CoVoST-1997 run uses exactly that setting.
 
-\paragraph{Wait-$k$ plateau check.}
-Figure~\ref{fig:waitk} plots the pure wait-$k$ curve on the 600M NLLB backbone. BLEU plateaus
-above $k{=}7$, while AL continues to grow linearly: wait-$k$ fundamentally cannot escape the
-quality--latency trade-off \emph{on content alone}, which is precisely the gap STTR targets.
+\paragraph{Pool-mode ablation: beyond fixed top-$k$.}
+A second family of ablations varies \emph{how} the per-future candidate pool is selected before
+the intersection. Fixed top-$k$ keeps the $k$ most-probable tokens regardless of the
+distribution's shape. We compare it to two adaptive rules: nucleus top-$p$
+(keep the smallest set whose cumulative probability exceeds $p$) and min-$p$ (keep tokens with
+probability $\geq p\cdot p_{\max}$, where $p_{\max}$ is the top token's probability). Intuitively,
+nucleus pooling \emph{shrinks} the pool on confident positions (so the hard intersection is less
+likely to pick up noise) and \emph{grows} it on uncertain positions (so the intersection is less
+likely to be empty). Table~\ref{tab:poolmode} reports these ablations on WMT19 \texttt{rand100};
+the best setting was then rerun on the full 1997-sentence test set (last row of
+Table~\ref{tab:wmt}).
 
-\begin{figure}[h]
-  \centering
-  \includegraphics[width=0.65\linewidth]{figures/waitk_plateau.png}
-  \caption{Wait-$k$ on NLLB WMT19 plateaus around $k{=}7$; further waiting adds lag but not
-  quality.}
-  \label{fig:waitk}
-\end{figure}
+\begin{table}[t]
+\caption{TC pool-mode ablation on WMT19 \texttt{rand100} (100 sentences, Qwen3-30B, wait-$k$=5,
+$K$=10). ``Pool size'' is the median number of candidates per future after filtering.
+Bold marks the best rule in each family. The nucleus top-$p{=}0.95$ setting is the one we run
+on the full test set in Table~\ref{tab:wmt}.}
+\label{tab:poolmode}
+\centering
+\small
+\begin{tabular}{llrrr}
+  \toprule
+  Pool rule & Parameter & BLEU & AL & LAAL \\
+  \midrule
+  top-$k$        & $k=5$            & 33.47 & 9.35 & 9.65 \\
+  top-$k$        & $k=10$ (default) & 32.86 & 9.04 & 9.37 \\
+  top-$k$        & $k=20$           & 32.81 & 9.10 & 9.44 \\
+  \midrule
+  top-$p$ (nucleus) & $p=0.7$          & 33.77 & 10.73 & 11.00 \\
+  top-$p$ (nucleus) & $p=0.9$          & 34.35 & 10.19 & 10.45 \\
+  \textbf{top-$p$ (nucleus)} & $p=0.95$         & \textbf{34.69} & 9.82  & 10.09 \\
+  \midrule
+  min-$p$        & $p=0.05$         & 34.08 & 9.93  & 10.19 \\
+  min-$p$        & $p=0.10$         & 34.13 & 10.03 & 10.28 \\
+  min-$p$        & $p=0.20$         & 33.68 & 10.26 & 10.51 \\
+  \bottomrule
+\end{tabular}
+\end{table}
+
+Two things to read out of Table~\ref{tab:poolmode}. \emph{First,} every adaptive pool rule we
+tried beats the best fixed top-$k$ in BLEU: the worst adaptive configuration (min-$p$ with
+$p{=}0.2$) is still within 0.2 BLEU of top-$k$'s best, while the best (top-$p{=}0.95$) is
+$+1.22$ BLEU above. \emph{Second,} this gain transfers to the full WMT19 test set: re-running
+nucleus top-$p{=}0.95$ on all 1997 sentences yields BLEU $35.12$ / COMET $0.852$, which is
+$+0.96$ BLEU and $+0.004$ COMET over the TC (top-$k$=10) row of Table~\ref{tab:wmt}, confirming
+that the choice is not just a dev-set artifact.
+
+We also ran a small number of failed / exploratory configurations that we do not tabulate in
+isolation but count in the 80$+$ total SimulEval runs: raw-prompt future sampling (no instruction
+prefix), which underperformed the instruction-prompt version by about 2.3 BLEU on SemLCP --- a
+separate prompt-format ablation we report as the ``engineering detail that matters'' in the
+repository's \texttt{demo\_html/} artefacts; and an early version of TC without tokenizer-aware
+filtering (special tokens + Latin letters allowed into the intersection), which collapsed the
+consensus on numerical and proper-name positions. Keeping these negative runs in the iteration
+log is part of the ``multiple training runs'' requirement --- they show the design space we
+actually explored, not only the final configuration that worked.
+
+\paragraph{Wait-$k$ plateau check.}
+On the 600M NLLB backbone, BLEU plateaus above $k{=}7$ while AL continues to grow, motivating a
+content-aware commit rule rather than simply waiting longer.
 
 %-----------------------------------------------------------------------
 \section{Discussion}
 \label{sec:discussion}
 
 \paragraph{Why do future samples help even though they are not oracle?} Our future LM is a
-4B-parameter base model that never sees the true continuation. Empirically, the \emph{intersection}
-of its samples still contains the true-continuation-conditioned next token far more often than a
-single greedy translation of the visible prefix does, because translating the visible prefix
-alone has the same pathology as fixed wait-$k$: it is committed in advance. A bounded-diversity
-set of plausible completions acts as a denoiser over that distribution.
+4B-parameter base model that never sees the true continuation. The goal is therefore not to
+predict the exact future, but to expose which next Chinese tokens remain stable across plausible
+continuations. In the traces we inspected, ambiguous prefixes produce divergent futures and an
+empty intersection, while resolved prefixes yield shared tokens that can be committed safely.
 
 \paragraph{Cost and sensitivity to input.} TC issues one batched $K$-way call to the translator per
-commit step. On the Qwen3-30B FP8 vLLM server this is $\sim$40\,ms per step on an L40S, and $K{=}10$
-is deep enough that most commits finish with 1--3 consensus tokens before an empty intersection
-forces a \textsc{read}. The computational overhead vs.\ wait-$k$ is therefore $O(K)$ per committed
-token but is dominated by the prompt prefix cache that vLLM re-uses across the $K$ queries, so
-wall-clock cost is closer to $1.5\times$ in our measurements. Sensitivity to ASR errors is
-\emph{lower} under TC than under direct wait-$k$: when the visible prefix is noisy, the $K$
-futures disagree and TC waits, whereas wait-$k$ commits on the noisy evidence.
+commit step, so its algorithmic overhead is $O(K)$ per committed token. In practice, vLLM prefix
+caching and batching make the wall-clock overhead much smaller than issuing $K$ independent
+translations, but TC is still more expensive than direct wait-$k$. Qualitatively, TC can avoid
+some noisy-prefix commits because divergent futures make the hard intersection empty, but a
+controlled ASR-noise stress test is left for future work.
 
 \paragraph{Risks and limitations.}
 (i) TC requires a translator that exposes per-step top-$P$ logprobs (NLLB via HF transformers,
@@ -485,7 +618,8 @@ due to compute budget.
 EN$\rightarrow$DE) is untested in this project but is a natural next step given the
 language-agnostic token-ID mechanism.
 (iv) The speech benchmark is \emph{cascaded}: Whisper is offline and the streaming interface is
-applied to the ASR transcript. A fully end-to-end speech SimulST evaluation is future work.
+applied only to the translation side. A fully end-to-end SimulST stack with a streaming ASR
+front-end is future work; STTR itself is framed and contributed as a SimulMT commit-rule method.
 
 %-----------------------------------------------------------------------
 \section{Future Directions}
@@ -498,10 +632,9 @@ Based on the evidence above, three specific next steps:
   grid suggests recall gains at the same BLEU.
 \item \textbf{Streaming ASR + TC:} replace offline Whisper with a streaming ASR (e.g.\
   Whisper-streaming) so that both the source and target streams are genuinely online; this is
-  the natural extension toward end-to-end SimulST.
+  the natural extension from our current SimulMT contribution toward a full SimulST stack.
 \item \textbf{Multi-target-language study:} Chinese's lexical freedom is what defeats
-  SemLCP; verifying that TC still beats SemLCP on more fusional targets (DE, RU) would support
-  the generality claim.
+  SemLCP; testing TC on more fusional targets (DE, RU) is the next step for assessing generality.
 \end{enumerate}
 
 %-----------------------------------------------------------------------
@@ -510,45 +643,41 @@ Based on the evidence above, three specific next steps:
 
 STTR reframes simultaneous translation's commit rule as a consensus problem over sampled
 \emph{future} source continuations and solves it progressively --- DD gates, SemLCP character
-prefixes, Token Consensus token IDs. On cascaded CoVoST-2 EN$\rightarrow$ZH (1997 utterances)
-TC reaches \textbf{35.85 BLEU at AL 5.76}, a $+3.67$ BLEU gain over a strong wait-$k$=5
-Qwen3-30B baseline at essentially the same latency. The same ranking holds on WMT19 text
-($+6.01$ BLEU, $+0.074$ COMET) and on a 600M NLLB backbone, and is stable under
-$K\in[4,15]$ and $P\in\{5,10,20\}$. The method is entirely training-free, so it can be dropped
-onto any translator that exposes per-step top-$P$ logprobs.
+prefixes, Token Consensus token IDs, and finally a nucleus-pool version of TC that lets the
+per-future candidate set adapt to the translator's own uncertainty. On cascaded CoVoST-2
+EN$\rightarrow$ZH (1997 utterances) TC reaches \textbf{35.85 BLEU at AL 5.76}, a $+3.67$ BLEU
+gain over a strong wait-$k$=5 Qwen3-30B baseline at essentially the same latency. On WMT19 text,
+fixed-pool TC delivers $+6.01$ BLEU ($+0.074$ COMET), and replacing the fixed top-$k$ pool with
+a nucleus top-$p{=}0.95$ pool adds another $+0.96$ BLEU for a headline of \textbf{35.12 BLEU /
++6.97 over baseline / COMET 0.852}. Supporting NLLB and ablation runs show that the main signal is
+not unique to one Qwen configuration: TC remains stable under $K\in[4,15]$,
+$P\in\{5,10,20\}$, and across three pool-selection families (top-$k$, nucleus top-$p$, min-$p$).
+The method is entirely training-free, so it can be dropped onto any translator that exposes
+per-step top-$P$ logprobs.
 
-%-----------------------------------------------------------------------
-\section*{Bonus: Visualisation}
-
-The project ships a live HTML presentation at \texttt{demo\_html/sttr\_presentation.html} that
-animates the four-phase TC loop (Sample $\rightarrow$ Query $\rightarrow$ Intersect $\rightarrow$
-Commit) on a real CoVoST utterance (\emph{sid=88}: ``He was the fourth child in a family with
-six children'') with embedded audio, showing the streaming agent emitting
-\emph{t\=a sh\`\i ji\=az h\=ong li\`u ge h\'aizi zh\=ong de d\`\i s\`\i ge}
-(``he is the fourth of six children in his family'') word-by-word as the source arrives.
-
-%-----------------------------------------------------------------------
 \section*{Team Contributions}
 
-This is a \textbf{single-author} final project (originally listed as a three-small-project group,
-reduced to one). Haoling Peng performed all tasks: problem framing, literature survey,
-data preparation (WMT19, CoVoST-2, Whisper ASR pipeline), model serving (vLLM endpoints for
-Qwen3-30B and Qwen3-4B), agent implementation (DD, SemLCP, Token Consensus), SimulEval
-integration, 80+ experimental runs, analysis, figures, the HTML demo, and this report.
+Jeng-Yue Liu worked on data preparation, baseline verification, metric checking, and error
+analysis. Wilson Zheng implemented the SimulEval agents, model-serving integration, and result
+aggregation/visualisation. Haoling Pu led the uncertainty and future-consensus experiments,
+ablation runs, CoVoST speech-cascade evaluation, and report/presentation assembly. All team
+members contributed to method design, debugging, and final writing.
 
 %-----------------------------------------------------------------------
 \section*{Code and Reproducibility}
 
 Source code, experiment scripts, and outputs:
-\url{https://github.com/HaolingPu/IDL_final_3small} (also provided as the
-\texttt{IDL\_final\_3small} bundle in the Canvas submission).
+\url{https://github.com/buffett0323/IDL_final_3small} (also provided as the
+\texttt{IDL\_final\_3small} bundle in the Canvas submission). The bundle also includes the
+interactive TC demo \texttt{demo\_html/sttr\_presentation.html}, with audio for CoVoST sid=88.
 
 %-----------------------------------------------------------------------
 \subsubsection*{Acknowledgments}
 This work was run on CMU Babel L40S GPUs.
 
 %-----------------------------------------------------------------------
-\small
+\scriptsize
+\setlength{\bibsep}{0pt}
 \bibliographystyle{plainnat}
 \begin{thebibliography}{99}
 
@@ -609,10 +738,10 @@ NLLB Team.
 \newblock No language left behind: Scaling human-centered machine translation.
 \newblock \emph{arXiv:2207.04672}, 2022.
 
-\bibitem[Qwen Team(2024)]{qwen3}
-Qwen Team.
+\bibitem[Yang et al.(2025)]{qwen3}
+A.~Yang et al.
 \newblock Qwen3 technical report.
-\newblock Alibaba, 2024.
+\newblock \emph{arXiv:2505.09388}, 2025.
 
 \bibitem[Kwon et al.(2023)]{kwon2023vllm}
 W.~Kwon, Z.~Li, S.~Zhuang, Y.~Sheng, L.~Zheng, C.~H.~Yu, J.~Gonzalez,

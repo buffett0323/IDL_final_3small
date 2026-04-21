@@ -326,13 +326,20 @@ class VLLMClient:
         messages: list[dict],
         max_tokens: int = 256,
         temperature: float = 0.0,
+        top_p: float = 1.0,
+        min_p: float = 0.0,
     ) -> str:
-        resp = self.client.chat.completions.create(
+        kwargs = dict(
             model=self.model,
             messages=messages,
             max_tokens=max_tokens,
             temperature=temperature,
+            top_p=top_p,
         )
+        # vLLM-specific min_p (not native OpenAI). Only pass when enabled.
+        if min_p > 0.0:
+            kwargs["extra_body"] = {"min_p": min_p}
+        resp = self.client.chat.completions.create(**kwargs)
         return resp.choices[0].message.content.strip()
 
     def translate_prefix_with_context(
@@ -340,6 +347,9 @@ class VLLMClient:
         observed_prefix: str,
         future_continuation: str,
         committed_zh: str,
+        temperature: float = 0.0,
+        top_p: float = 1.0,
+        min_p: float = 0.0,
     ) -> str:
         """Ask Qwen30B to translate the observed prefix given future context.
 
@@ -367,7 +377,9 @@ class VLLMClient:
                 {"role": "user", "content": user},
             ],
             max_tokens=128,
-            temperature=0.0,
+            temperature=temperature,
+            top_p=top_p,
+            min_p=min_p,
         )
         return normalize_zh(result)
 
@@ -618,6 +630,8 @@ class SemanticLCPAgent(TextToTextAgent):
 
         self.wait_k = args.wait_k
         self.num_futures = args.num_futures
+        self.decode_mode = getattr(args, "decode_mode", "greedy")
+        self.decode_p = float(getattr(args, "decode_p", 0.9))
         self.future_words = args.future_words
         self.future_temperature = args.future_temperature
         self.consensus_ratio = args.consensus_ratio
@@ -734,6 +748,16 @@ class SemanticLCPAgent(TextToTextAgent):
             action="store_true",
             help="Print each consensus step (English futures, ZH candidates, LCP delta) to stdout.",
         )
+        parser.add_argument(
+            "--decode-mode", choices=["greedy", "topp", "minp"], default="greedy",
+            help="Decoding strategy for the direct-translate path (--num-futures 0). "
+                 "'greedy' (default) uses argmax (temperature=0); 'topp' uses nucleus "
+                 "sampling with --decode-p as top_p; 'minp' uses vLLM min_p sampling.",
+        )
+        parser.add_argument(
+            "--decode-p", type=float, default=0.9,
+            help="top_p (for --decode-mode topp) or min_p (for --decode-mode minp).",
+        )
 
     def reset(self):
         super().reset()
@@ -805,11 +829,19 @@ class SemanticLCPAgent(TextToTextAgent):
 
         # ── Direct-translate mode (num_futures == 0) ─────────────────────────
         if self.num_futures == 0:
+            # Map decode_mode → (temperature, top_p, min_p)
+            if self.decode_mode == "topp":
+                _temp, _tp, _mp = 1.0, self.decode_p, 0.0
+            elif self.decode_mode == "minp":
+                _temp, _tp, _mp = 1.0, 1.0, self.decode_p
+            else:  # greedy
+                _temp, _tp, _mp = 0.0, 1.0, 0.0
             try:
                 zh = self._vllm.translate_prefix_with_context(
                     observed_prefix=src_text,
                     future_continuation="",
                     committed_zh=self._committed,
+                    temperature=_temp, top_p=_tp, min_p=_mp,
                 )
             except Exception as e:
                 print(f"[WARN] vLLM call failed: {e}")
